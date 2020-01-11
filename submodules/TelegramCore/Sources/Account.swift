@@ -160,7 +160,7 @@ public enum AccountPreferenceEntriesResult {
 
 public func accountPreferenceEntries(rootPath: String, id: AccountRecordId, keys: Set<ValueBoxKey>, encryptionParameters: ValueBoxEncryptionParameters) -> Signal<AccountPreferenceEntriesResult, NoError> {
     let path = "\(rootPath)/\(accountRecordIdPathName(id))"
-    let postbox = openPostbox(basePath: path + "/postbox", seedConfiguration: telegramPostboxSeedConfiguration, encryptionParameters: encryptionParameters)
+    let postbox = openPostbox(basePath: path + "/postbox", seedConfiguration: telegramPostboxSeedConfiguration, encryptionParameters: encryptionParameters, isSupportAccount: false)
     return postbox
     |> mapToSignal { value -> Signal<AccountPreferenceEntriesResult, NoError> in
         switch value {
@@ -187,7 +187,7 @@ public enum AccountNoticeEntriesResult {
 
 public func accountNoticeEntries(rootPath: String, id: AccountRecordId, encryptionParameters: ValueBoxEncryptionParameters) -> Signal<AccountNoticeEntriesResult, NoError> {
     let path = "\(rootPath)/\(accountRecordIdPathName(id))"
-    let postbox = openPostbox(basePath: path + "/postbox", seedConfiguration: telegramPostboxSeedConfiguration, encryptionParameters: encryptionParameters)
+    let postbox = openPostbox(basePath: path + "/postbox", seedConfiguration: telegramPostboxSeedConfiguration, encryptionParameters: encryptionParameters, isSupportAccount: false)
     return postbox
     |> mapToSignal { value -> Signal<AccountNoticeEntriesResult, NoError> in
         switch value {
@@ -208,7 +208,7 @@ public enum LegacyAccessChallengeDataResult {
 
 public func accountLegacyAccessChallengeData(rootPath: String, id: AccountRecordId, encryptionParameters: ValueBoxEncryptionParameters) -> Signal<LegacyAccessChallengeDataResult, NoError> {
     let path = "\(rootPath)/\(accountRecordIdPathName(id))"
-    let postbox = openPostbox(basePath: path + "/postbox", seedConfiguration: telegramPostboxSeedConfiguration, encryptionParameters: encryptionParameters)
+    let postbox = openPostbox(basePath: path + "/postbox", seedConfiguration: telegramPostboxSeedConfiguration, encryptionParameters: encryptionParameters, isSupportAccount: false)
     return postbox
     |> mapToSignal { value -> Signal<LegacyAccessChallengeDataResult, NoError> in
         switch value {
@@ -222,10 +222,10 @@ public func accountLegacyAccessChallengeData(rootPath: String, id: AccountRecord
     }
 }
 
-public func accountWithId(accountManager: AccountManager, networkArguments: NetworkInitializationArguments, id: AccountRecordId, encryptionParameters: ValueBoxEncryptionParameters, supplementary: Bool, rootPath: String, beginWithTestingEnvironment: Bool, backupData: AccountBackupData?, auxiliaryMethods: AccountAuxiliaryMethods, shouldKeepAutoConnection: Bool = true) -> Signal<AccountResult, NoError> {
+public func accountWithId(accountManager: AccountManager, networkArguments: NetworkInitializationArguments, id: AccountRecordId, encryptionParameters: ValueBoxEncryptionParameters, supplementary: Bool, rootPath: String, beginWithTestingEnvironment: Bool, isSupportAccount: Bool, backupData: AccountBackupData?, auxiliaryMethods: AccountAuxiliaryMethods, shouldKeepAutoConnection: Bool = true) -> Signal<AccountResult, NoError> {
     let path = "\(rootPath)/\(accountRecordIdPathName(id))"
     
-    let postbox = openPostbox(basePath: path + "/postbox", seedConfiguration: telegramPostboxSeedConfiguration, encryptionParameters: encryptionParameters)
+    let postbox = openPostbox(basePath: path + "/postbox", seedConfiguration: telegramPostboxSeedConfiguration, encryptionParameters: encryptionParameters, isSupportAccount: false)
     
     return postbox
     |> mapToSignal { result -> Signal<AccountResult, NoError> in
@@ -240,7 +240,7 @@ public func accountWithId(accountManager: AccountManager, networkArguments: Netw
                     return postbox.transaction { transaction -> (PostboxCoding?, LocalizationSettings?, ProxySettings?, NetworkSettings?) in
                         var state = transaction.getState()
                         if state == nil, let backupData = backupData {
-                            let backupState = AuthorizedAccountState(isTestingEnvironment: beginWithTestingEnvironment, masterDatacenterId: backupData.masterDatacenterId, peerId: PeerId(backupData.peerId), state: nil)
+                            let backupState = AuthorizedAccountState(isTestingEnvironment: beginWithTestingEnvironment, masterDatacenterId: backupData.masterDatacenterId, peerId: PeerId(backupData.peerId), isSupportAccount: isSupportAccount, state: nil)
                             state = backupState
                             let dict = NSMutableDictionary()
                             dict.setObject(MTDatacenterAuthInfo(authKey: backupData.masterDatacenterKey, authKeyId: backupData.masterDatacenterKeyId, saltSet: [], authKeyAttributes: [:], mainTempAuthKey: nil, mediaTempAuthKey: nil), forKey: backupData.masterDatacenterId as NSNumber)
@@ -268,7 +268,7 @@ public func accountWithId(accountManager: AccountManager, networkArguments: Netw
                                     |> mapToSignal { phoneNumber in
                                         return initializedNetwork(arguments: networkArguments, supplementary: supplementary, datacenterId: Int(authorizedState.masterDatacenterId), keychain: keychain, basePath: path, testingEnvironment: authorizedState.isTestingEnvironment, languageCode: localizationSettings?.primaryComponent.languageCode, proxySettings: proxySettings, networkSettings: networkSettings, phoneNumber: phoneNumber)
                                         |> map { network -> AccountResult in
-                                            return .authorized(Account(accountManager: accountManager, id: id, basePath: path, testingEnvironment: authorizedState.isTestingEnvironment, postbox: postbox, network: network, networkArguments: networkArguments, peerId: authorizedState.peerId, auxiliaryMethods: auxiliaryMethods, supplementary: supplementary))
+                                            return .authorized(Account(accountManager: accountManager, id: id, basePath: path, testingEnvironment: authorizedState.isTestingEnvironment, postbox: postbox, network: network, networkArguments: networkArguments, peerId: authorizedState.peerId, auxiliaryMethods: auxiliaryMethods, supplementary: supplementary, isSupportAccount: authorizedState.isSupportAccount))
                                         }
                                     }
                                 case _:
@@ -824,6 +824,7 @@ public class Account {
     public let network: Network
     public let networkArguments: NetworkInitializationArguments
     public let peerId: PeerId
+    public let isSupportAccount: Bool
     
     public let auxiliaryMethods: AccountAuxiliaryMethods
     
@@ -888,7 +889,7 @@ public class Account {
     private var lastSmallLogPostTimestamp: Double?
     private let smallLogPostDisposable = MetaDisposable()
     
-    public init(accountManager: AccountManager, id: AccountRecordId, basePath: String, testingEnvironment: Bool, postbox: Postbox, network: Network, networkArguments: NetworkInitializationArguments, peerId: PeerId, auxiliaryMethods: AccountAuxiliaryMethods, supplementary: Bool) {
+    public init(accountManager: AccountManager, id: AccountRecordId, basePath: String, testingEnvironment: Bool, postbox: Postbox, network: Network, networkArguments: NetworkInitializationArguments, peerId: PeerId, auxiliaryMethods: AccountAuxiliaryMethods, supplementary: Bool, isSupportAccount: Bool) {
         self.id = id
         self.basePath = basePath
         self.testingEnvironment = testingEnvironment
@@ -896,6 +897,7 @@ public class Account {
         self.network = network
         self.networkArguments = networkArguments
         self.peerId = peerId
+        self.isSupportAccount = isSupportAccount
         
         self.auxiliaryMethods = auxiliaryMethods
         self.supplementary = supplementary

@@ -1930,6 +1930,70 @@ public struct help {
         }
     
     }
+    public enum UserInfo: TypeConstructorDescription {
+        case userInfoEmpty
+        case userInfo(message: String, entities: [Api.MessageEntity], author: String, date: Int32)
+
+    public func serialize(_ buffer: Buffer, _ boxed: Swift.Bool) {
+    switch self {
+                case .userInfoEmpty:
+                    if boxed {
+                        buffer.appendInt32(-206688531)
+                    }
+
+                    break
+                case .userInfo(let message, let entities, let author, let date):
+                    if boxed {
+                        buffer.appendInt32(32192344)
+                    }
+                    serializeString(message, buffer: buffer, boxed: false)
+                    buffer.appendInt32(481674261)
+                    buffer.appendInt32(Int32(entities.count))
+                    for item in entities {
+                        item.serialize(buffer, true)
+                    }
+                    serializeString(author, buffer: buffer, boxed: false)
+                    serializeInt32(date, buffer: buffer, boxed: false)
+                    break
+    }
+    }
+
+    public func descriptionFields() -> (String, [(String, Any)]) {
+        switch self {
+                case .userInfoEmpty:
+                return ("userInfoEmpty", [])
+                case .userInfo(let message, let entities, let author, let date):
+                return ("userInfo", [("message", message), ("entities", entities), ("author", author), ("date", date)])
+    }
+    }
+
+        public static func parse_userInfoEmpty(_ reader: BufferReader) -> UserInfo? {
+            return Api.help.UserInfo.userInfoEmpty
+        }
+        public static func parse_userInfo(_ reader: BufferReader) -> UserInfo? {
+            var _1: String?
+            _1 = parseString(reader)
+            var _2: [Api.MessageEntity]?
+            if let _ = reader.readInt32() {
+                _2 = Api.parseVector(reader, elementSignature: 0, elementType: Api.MessageEntity.self)
+            }
+            var _3: String?
+            _3 = parseString(reader)
+            var _4: Int32?
+            _4 = reader.readInt32()
+            let _c1 = _1 != nil
+            let _c2 = _2 != nil
+            let _c3 = _3 != nil
+            let _c4 = _4 != nil
+            if _c1 && _c2 && _c3 && _c4 {
+                return Api.help.UserInfo.userInfo(message: _1!, entities: _2!, author: _3!, date: _4!)
+            }
+            else {
+                return nil
+            }
+        }
+
+    }
     public enum TermsOfServiceUpdate: TypeConstructorDescription {
         case termsOfServiceUpdateEmpty(expires: Int32)
         case termsOfServiceUpdate(expires: Int32, termsOfService: Api.help.TermsOfService)

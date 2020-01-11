@@ -91,6 +91,7 @@ private final class SettingsItemArguments {
     let openProxy: () -> Void
     let openSavedMessages: () -> Void
     let openRecentCalls: () -> Void
+    let openTSupport: () -> Void
     let openPrivacyAndSecurity: (AccountPrivacySettings?) -> Void
     let openDataAndStorage: () -> Void
     let openStickerPacks: ([ArchivedStickerPackItem]?) -> Void
@@ -125,6 +126,7 @@ private final class SettingsItemArguments {
         openProxy: @escaping () -> Void,
         openSavedMessages: @escaping () -> Void,
         openRecentCalls: @escaping () -> Void,
+        openTSupport: @escaping () -> Void,
         openPrivacyAndSecurity: @escaping (AccountPrivacySettings?) -> Void,
         openDataAndStorage: @escaping () -> Void,
         openStickerPacks: @escaping ([ArchivedStickerPackItem]?) -> Void,
@@ -158,6 +160,7 @@ private final class SettingsItemArguments {
         self.openProxy = openProxy
         self.openSavedMessages = openSavedMessages
         self.openRecentCalls = openRecentCalls
+        self.openTSupport = openTSupport
         self.openPrivacyAndSecurity = openPrivacyAndSecurity
         self.openDataAndStorage = openDataAndStorage
         self.openStickerPacks = openStickerPacks
@@ -226,6 +229,7 @@ private indirect enum SettingsEntry: ItemListNodeEntry {
     
     case askAQuestion(PresentationTheme, UIImage?, String)
     case faq(PresentationTheme, UIImage?, String)
+    case support(PresentationTheme, UIImage?, String)
     
     var section: ItemListSectionId {
         switch self {
@@ -245,7 +249,7 @@ private indirect enum SettingsEntry: ItemListNodeEntry {
             return SettingsSection.generalSettings.rawValue
         case .passport, .wallet, .watch :
             return SettingsSection.advanced.rawValue
-        case .askAQuestion, .faq:
+        case .askAQuestion, .faq, .support:
             return SettingsSection.help.rawValue
         }
     }
@@ -300,6 +304,8 @@ private indirect enum SettingsEntry: ItemListNodeEntry {
             return 1017
         case .faq:
             return 1018
+        case .support:
+            return 1019
         }
     }
     
@@ -481,6 +487,12 @@ private indirect enum SettingsEntry: ItemListNodeEntry {
                 } else {
                     return false
                 }
+            case let .support(lhsTheme, lhsImage, lhsText):
+                if case let .support(rhsTheme, rhsImage, rhsText) = rhs, lhsTheme === rhsTheme, lhsImage === rhsImage, lhsText == rhsText {
+                    return true
+                } else {
+                    return false
+                }
         }
     }
     
@@ -612,6 +624,11 @@ private indirect enum SettingsEntry: ItemListNodeEntry {
                 return ItemListDisclosureItem(presentationData: presentationData, icon: image, title: text, label: "", sectionId: ItemListSectionId(self.section), style: .blocks, action: {
                     arguments.openFaq(nil)
                 }, clearHighlightAutomatically: false)
+            case let .support(theme, image, text):
+                return ItemListDisclosureItem(presentationData: presentationData, icon: image, title: text, label: "", sectionId: ItemListSectionId(self.section), style: .blocks, action: {
+                    arguments.openTSupport()
+                })
+
         }
     }
 }
@@ -628,11 +645,18 @@ private func settingsEntries(account: Account, presentationData: PresentationDat
     if let peer = peerViewMainPeer(view) as? TelegramUser {
         let userInfoState = ItemListAvatarAndNameInfoItemState(editingName: nil, updatingName: nil)
         entries.append(.userInfo(account, presentationData.theme, presentationData.strings, presentationData.dateTimeFormat, peer, view.cachedData, userInfoState, state.updatingAvatar))
-        if peer.photo.isEmpty {
-            entries.append(.setProfilePhoto(presentationData.theme, presentationData.strings.Settings_SetProfilePhoto))
-        }
-        if peer.addressName == nil {
-            entries.append(.setUsername(presentationData.theme, presentationData.strings.Settings_SetUsername))
+        /** TSupport
+         *    Disabling following for support accounts
+         *      - Set Username
+         *      - Set Profile Picture
+         **/
+        if !account.isSupportAccount {
+            if peer.photo.isEmpty {
+                entries.append(.setProfilePhoto(presentationData.theme, presentationData.strings.Settings_SetProfilePhoto))
+            }
+            if peer.addressName == nil {
+                entries.append(.setUsername(presentationData.theme, presentationData.strings.Settings_SetUsername))
+            }
         }
         
         if displayPhoneNumberConfirmation {
@@ -669,7 +693,10 @@ private func settingsEntries(account: Account, presentationData: PresentationDat
         }
         
         entries.append(.savedMessages(presentationData.theme, PresentationResourcesSettings.savedMessages, presentationData.strings.Settings_SavedMessages))
-        entries.append(.recentCalls(presentationData.theme, PresentationResourcesSettings.recentCalls, presentationData.strings.CallSettings_RecentCalls))
+        /** TSupport: Disabling Recent Calls settings for support accounts **/
+        if !account.isSupportAccount {
+            entries.append(.recentCalls(presentationData.theme, PresentationResourcesSettings.recentCalls, presentationData.strings.CallSettings_RecentCalls))
+        }
         if enableQRLogin {
             entries.append(.devices(presentationData.theme, UIImage(bundleImageName: "Settings/MenuIcons/Sessions")?.precomposed(), presentationData.strings.Settings_Devices, otherSessionCount == 0 ? presentationData.strings.Settings_AddDevice : "\(otherSessionCount + 1)"))
         } else {
@@ -696,8 +723,14 @@ private func settingsEntries(account: Account, presentationData: PresentationDat
             entries.append(.watch(presentationData.theme, PresentationResourcesSettings.watch, presentationData.strings.Settings_AppleWatch, ""))
         }
         
+        /** TSupport: Disable "Ask a Question and Telegram FAQ for support accounts **/
+        if !account.isSupportAccount {
         entries.append(.askAQuestion(presentationData.theme, PresentationResourcesSettings.support, presentationData.strings.Settings_Support))
         entries.append(.faq(presentationData.theme, PresentationResourcesSettings.faq, presentationData.strings.Settings_FAQ))
+        } else {
+            /** Disabling support settings for now*/
+            //entries.append(.support(presentationData.theme, PresentationResourcesSettings.TSupport, "Support")) //presentationData.strings.SupportSettings_Support))
+        }
     }
     
     return entries
@@ -931,6 +964,13 @@ public func settingsController(context: AccountContext, accountManager: AccountM
         |> take(1)).start(next: { context in
             pushControllerImpl?(CallListController(context: context, mode: .navigation))
         })
+    }, openTSupport: {
+        let _ = (contextValue.get()
+            |> deliverOnMainQueue
+            |> take(1)).start(next: { context in
+                pushControllerImpl?(supportController(context: context))
+                print("SYD: in support settings")
+            })
     }, openPrivacyAndSecurity: { privacySettingsValue in
         let _ = (contextValue.get()
         |> deliverOnMainQueue
@@ -1057,7 +1097,7 @@ public func settingsController(context: AccountContext, accountManager: AccountM
         |> take(1)).start(next: { context in
             let isTestingEnvironment = context.account.testingEnvironment
             let _ = accountManager.transaction({ transaction -> Void in
-                let _ = transaction.createAuth([AccountEnvironmentAttribute(environment: isTestingEnvironment ? .test : .production)])
+                let _ = transaction.createAuth([AccountEnvironmentAttribute(environment: isTestingEnvironment ? .test : .production, isSupportAccount: context.account.isSupportAccount)])
             }).start()
         })
     }, setAccountIdWithRevealedOptions: { accountId, fromAccountId in

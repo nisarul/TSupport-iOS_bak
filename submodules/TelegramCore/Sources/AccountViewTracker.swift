@@ -284,7 +284,7 @@ public final class AccountViewTracker {
         
         self.historyViewStateValidationContexts = HistoryViewStateValidationContexts(queue: self.queue, postbox: account.postbox, network: account.network, accountPeerId: account.peerId)
         
-        self.chatHistoryPreloadManager = ChatHistoryPreloadManager(postbox: account.postbox, network: account.network, accountPeerId: account.peerId, networkState: account.networkState)
+        self.chatHistoryPreloadManager = ChatHistoryPreloadManager(postbox: account.postbox, network: account.network, accountPeerId: account.peerId, networkState: account.networkState, isSupportAccount: account.isSupportAccount)
         
         self.externallyUpdatedPeerIdDisposable.set((account.stateManager.externallyUpdatedPeerIds
         |> deliverOn(self.queue)).start(next: { [weak self] peerIds in
@@ -835,12 +835,12 @@ public final class AccountViewTracker {
                 return
             }
             let queue = self.queue
-            context.disposable.set(combineLatest(fetchAndUpdateSupplementalCachedPeerData(peerId: peerId, network: account.network, postbox: account.postbox), fetchAndUpdateCachedPeerData(accountPeerId: account.peerId, peerId: peerId, network: account.network, postbox: account.postbox)).start(next: { [weak self] supplementalStatus, cachedStatus in
+            context.disposable.set(combineLatest(fetchAndUpdateSupplementalCachedPeerData(peerId: peerId, network: account.network, postbox: account.postbox), fetchAndUpdateCachedPeerData(accountPeerId: account.peerId, peerId: peerId, network: account.network, postbox: account.postbox), fetchAndUpdateSupportCachedPeerData(accountPeerId: account.peerId, peerId: peerId, network: account.network, postbox: account.postbox)).start(next: { [weak self] supplementalStatus, cachedStatus, supportStatus in
                 queue.async {
                     guard let strongSelf = self else {
                         return
                     }
-                    if !supplementalStatus || !cachedStatus {
+                    if !supplementalStatus || !cachedStatus || !supportStatus {
                         if let existingContext = strongSelf.cachedDataContexts[peerId] {
                             existingContext.timestamp = nil
                         }
@@ -877,12 +877,14 @@ public final class AccountViewTracker {
                     return
                 }
                 let queue = self.queue
-                context.disposable.set(combineLatest(fetchAndUpdateSupplementalCachedPeerData(peerId: peerId, network: account.network, postbox: account.postbox), fetchAndUpdateCachedPeerData(accountPeerId: account.peerId, peerId: peerId, network: account.network, postbox: account.postbox)).start(next: { [weak self] supplementalStatus, cachedStatus in
+                context.disposable.set(combineLatest(fetchAndUpdateSupplementalCachedPeerData(peerId: peerId, network: account.network, postbox: account.postbox), fetchAndUpdateCachedPeerData(accountPeerId: account.peerId, peerId: peerId, network: account.network, postbox: account.postbox), fetchAndUpdateSupportCachedPeerData(accountPeerId: account.peerId, peerId: peerId, network: account.network, postbox: account.postbox)).start(next: { [weak self] supplementalStatus, cachedStatus, supportStatus in
                     queue.async {
+                        print("SYD: 1. supportStatus=\(supportStatus)")
                         guard let strongSelf = self else {
                             return
                         }
-                        if !supplementalStatus || !cachedStatus {
+                        print("SYD: 2. supportStatus=\(supportStatus)")
+                        if !supplementalStatus || !cachedStatus || !supportStatus {
                             if let existingContext = strongSelf.cachedDataContexts[peerId] {
                                 existingContext.timestamp = nil
                             }
@@ -1332,7 +1334,7 @@ public final class AccountViewTracker {
     
     public func tailChatListView(groupId: PeerGroupId, count: Int) -> Signal<(ChatListView, ViewUpdateType), NoError> {
         if let account = self.account {
-            return self.wrappedChatListView(signal: account.postbox.tailChatListView(groupId: groupId, count: count, summaryComponents: ChatListEntrySummaryComponents(tagSummary: ChatListEntryMessageTagSummaryComponent(tag: .unseenPersonalMessage, namespace: Namespaces.Message.Cloud), actionsSummary: ChatListEntryPendingMessageActionsSummaryComponent(type: PendingMessageActionType.consumeUnseenPersonalMessage, namespace: Namespaces.Message.Cloud))))
+            return self.wrappedChatListView(signal: account.postbox.tailChatListView(groupId: groupId, count: count, summaryComponents: ChatListEntrySummaryComponents(tagSummary: ChatListEntryMessageTagSummaryComponent(tag: .unseenPersonalMessage, namespace: Namespaces.Message.Cloud), actionsSummary: ChatListEntryPendingMessageActionsSummaryComponent(type: PendingMessageActionType.consumeUnseenPersonalMessage, namespace: Namespaces.Message.Cloud)), isSupportAccount: account.isSupportAccount))
         } else {
             return .never()
         }

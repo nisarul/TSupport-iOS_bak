@@ -4796,6 +4796,40 @@ public extension Api {
                         return result
                     })
                 }
+
+                public static func editUserInfo(userId: Api.InputUser, message: String, entities: [Api.MessageEntity]) -> (FunctionDescription, Buffer, DeserializeFunctionResponse<Api.help.UserInfo>) {
+                    let buffer = Buffer()
+                    buffer.appendInt32(1723407216)
+                    userId.serialize(buffer, true)
+                    serializeString(message, buffer: buffer, boxed: false)
+                    buffer.appendInt32(481674261)
+                    buffer.appendInt32(Int32(entities.count))
+                    for item in entities {
+                        item.serialize(buffer, true)
+                    }
+                    return (FunctionDescription(name: "help.editUserInfo", parameters: [("userId", userId), ("message", message), ("entities", entities)]), buffer, DeserializeFunctionResponse { (buffer: Buffer) -> Api.help.UserInfo? in
+                        let reader = BufferReader(buffer)
+                        var result: Api.help.UserInfo?
+                        if let signature = reader.readInt32() {
+                            result = Api.parse(reader, signature: signature) as? Api.help.UserInfo
+                        }
+                        return result
+                    })
+                }
+
+                public static func getUserInfo(userId: Api.InputUser) -> (FunctionDescription, Buffer, DeserializeFunctionResponse<Api.help.UserInfo>) {
+                    let buffer = Buffer()
+                    buffer.appendInt32(59377875)
+                    userId.serialize(buffer, true)
+                    return (FunctionDescription(name: "help.getUserInfo", parameters: [("userId", userId)]), buffer, DeserializeFunctionResponse { (buffer: Buffer) -> Api.help.UserInfo? in
+                        let reader = BufferReader(buffer)
+                        var result: Api.help.UserInfo?
+                        if let signature = reader.readInt32() {
+                            result = Api.parse(reader, signature: signature) as? Api.help.UserInfo
+                        }
+                        return result
+                    })
+                }
             }
             public struct updates {
                 public static func getState() -> (FunctionDescription, Buffer, DeserializeFunctionResponse<Api.updates.State>) {

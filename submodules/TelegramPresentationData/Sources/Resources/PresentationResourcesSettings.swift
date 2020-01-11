@@ -27,6 +27,7 @@ public struct PresentationResourcesSettings {
     public static let proxy = renderIcon(name: "Settings/MenuIcons/Proxy")
     public static let savedMessages = renderIcon(name: "Settings/MenuIcons/SavedMessages")
     public static let recentCalls = renderIcon(name: "Settings/MenuIcons/RecentCalls")
+    public static let TSupport = UIImage(bundleImageName: "Settings/MenuIcons/Support")?.precomposed()
     public static let stickers = renderIcon(name: "Settings/MenuIcons/Stickers")
     
     public static let notifications = renderIcon(name: "Settings/MenuIcons/Notifications")

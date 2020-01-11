@@ -126,7 +126,7 @@ public final class PermissionController: ViewController {
                             switch status {
                                 case .requestable:
                                     strongSelf.splitTest?.addEvent(.ContactsRequest)
-                                    DeviceAccess.authorizeAccess(to: .contacts, { [weak self] result in
+                                    DeviceAccess.authorizeAccess(to: .contacts, isSupportAccount: strongSelf.context.account.isSupportAccount, { [weak self] result in
                                         if let strongSelf = self {
                                             if result {
                                                 strongSelf.splitTest?.addEvent(.ContactsAllowed)

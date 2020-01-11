@@ -8,6 +8,10 @@ public struct ContactsSettings: Equatable, PreferencesEntry {
         return ContactsSettings(synchronizeContacts: true)
     }
     
+    public static var defaultTSFSettings: ContactsSettings {
+        return ContactsSettings(synchronizeContacts: false)
+    }
+
     public init(synchronizeContacts: Bool) {
         self.synchronizeContacts = synchronizeContacts
     }

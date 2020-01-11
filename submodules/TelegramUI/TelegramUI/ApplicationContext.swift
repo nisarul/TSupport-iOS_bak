@@ -551,7 +551,7 @@ final class AuthorizedApplicationContext {
                             switch state {
                                 case .contacts:
                                     splitTest.addEvent(.ContactsRequest)
-                                    DeviceAccess.authorizeAccess(to: .contacts, presentationData: context.sharedContext.currentPresentationData.with { $0 }) { result in
+                                    DeviceAccess.authorizeAccess(to: .contacts, presentationData: context.sharedContext.currentPresentationData.with { $0 }, isSupportAccount: context.account.isSupportAccount) { result in
                                         if result {
                                             splitTest.addEvent(.ContactsAllowed)
                                         } else {

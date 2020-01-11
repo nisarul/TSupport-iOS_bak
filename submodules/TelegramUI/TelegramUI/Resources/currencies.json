@@ -476,6 +476,15 @@
 		"spaceBetweenAmountAndSymbol": false,
 		"decimalDigits": 0
 	},
+    "GRAM": {
+        "code": "GRAM",
+        "symbol": "GRAM",
+        "thousandsSeparator": ",",
+        "decimalSeparator": ".",
+        "symbolOnLeft": true,
+        "spaceBetweenAmountAndSymbol": false,
+        "decimalDigits": 2
+    },
 	"GTQ": {
 		"code": "GTQ",
 		"symbol": "Q",

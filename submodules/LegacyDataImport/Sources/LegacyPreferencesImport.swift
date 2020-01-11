@@ -428,6 +428,7 @@ func importLegacyPreferences(accountManager: AccountManager, account: TemporaryA
             
             return account.postbox.transaction { transaction -> Void in
                 transaction.updatePreferencesEntry(key: PreferencesKeys.contactsSettings, { current in
+                    // FIXIT: If account is support account, use ContactsSettings.defaultTSFSettings
                     var settings = current as? ContactsSettings ?? ContactsSettings.defaultSettings
                     if let contactsInhibitSync = contactsInhibitSync, contactsInhibitSync {
                         settings.synchronizeContacts = false

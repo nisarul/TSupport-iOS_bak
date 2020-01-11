@@ -40,6 +40,7 @@ private final class AccountUserInterfaceInUseContext {
 private struct AccountAttributes: Equatable {
     let sortIndex: Int32
     let isTestingEnvironment: Bool
+    let isSupportAccount: Bool
     let backupData: AccountBackupData?
 }
 
@@ -123,6 +124,9 @@ public final class SharedAccountContextImpl: SharedAccountContext {
     public let currentInAppNotificationSettings: Atomic<InAppNotificationSettings>
     private var inAppNotificationSettingsDisposable: Disposable?
     
+    public let currentSupportSettings: Atomic<SupportSettings>
+    private var supportSettingsDisposable: Disposable?
+
     public let currentAutomaticMediaDownloadSettings: Atomic<MediaAutoDownloadSettings>
     private let _automaticMediaDownloadSettings = Promise<MediaAutoDownloadSettings>()
     public var automaticMediaDownloadSettings: Signal<MediaAutoDownloadSettings, NoError> {
@@ -186,6 +190,7 @@ public final class SharedAccountContextImpl: SharedAccountContext {
         self.currentAutodownloadSettings = Atomic(value: initialPresentationDataAndSettings.autodownloadSettings)
         self.currentMediaInputSettings = Atomic(value: initialPresentationDataAndSettings.mediaInputSettings)
         self.currentInAppNotificationSettings = Atomic(value: initialPresentationDataAndSettings.inAppNotificationSettings)
+        self.currentSupportSettings = Atomic(value: initialPresentationDataAndSettings.supportSettings)
         
         let presentationData: Signal<PresentationData, NoError> = .single(initialPresentationDataAndSettings.presentationData)
         |> then(
@@ -250,6 +255,15 @@ public final class SharedAccountContextImpl: SharedAccountContext {
             }
         })
         
+        self.supportSettingsDisposable = (self.accountManager.sharedData(keys: [ApplicationSpecificSharedDataKeys.supportSettings])
+        |> deliverOnMainQueue).start(next: { [weak self] sharedData in
+            if let strongSelf = self {
+                if let settings = sharedData.entries[ApplicationSpecificSharedDataKeys.supportSettings] as? SupportSettings {
+                    let _ = strongSelf.currentSupportSettings.swap(settings)
+                }
+            }
+        })
+
         self.mediaInputSettingsDisposable = (self.accountManager.sharedData(keys: [ApplicationSpecificSharedDataKeys.mediaInputSettings])
         |> deliverOnMainQueue).start(next: { [weak self] sharedData in
             if let strongSelf = self {
@@ -292,7 +306,7 @@ public final class SharedAccountContextImpl: SharedAccountContext {
         
         let differenceDisposable = MetaDisposable()
         let _ = (accountManager.accountRecords()
-        |> map { view -> (AccountRecordId?, [AccountRecordId: AccountAttributes], (AccountRecordId, Bool)?) in
+        |> map { view -> (AccountRecordId?, [AccountRecordId: AccountAttributes], (AccountRecordId, Bool, Bool)?) in
             print("SharedAccountContextImpl: records appeared in \(CFAbsoluteTimeGetCurrent() - startTime)")
             
             var result: [AccountRecordId: AccountAttributes] = [:]
@@ -310,6 +324,13 @@ public final class SharedAccountContextImpl: SharedAccountContext {
                         return false
                     }
                 })
+                let isSupportAccount = record.attributes.contains(where: { attribute in
+                    if let attribute = attribute as? AccountEnvironmentAttribute, case true = attribute.isSupportAccount {
+                        return true
+                    } else {
+                        return false
+                    }
+                })
                 var backupData: AccountBackupData?
                 var sortIndex: Int32 = 0
                 for attribute in record.attributes {
@@ -319,9 +340,9 @@ public final class SharedAccountContextImpl: SharedAccountContext {
                         backupData = attribute.data
                     }
                 }
-                result[record.id] = AccountAttributes(sortIndex: sortIndex, isTestingEnvironment: isTestingEnvironment, backupData: backupData)
+                result[record.id] = AccountAttributes(sortIndex: sortIndex, isTestingEnvironment: isTestingEnvironment, isSupportAccount: isSupportAccount, backupData: backupData)
             }
-            let authRecord: (AccountRecordId, Bool)? = view.currentAuthAccount.flatMap({ authAccount in
+            let authRecord: (AccountRecordId, Bool, Bool)? = view.currentAuthAccount.flatMap({ authAccount in
                 let isTestingEnvironment = authAccount.attributes.contains(where: { attribute in
                     if let attribute = attribute as? AccountEnvironmentAttribute, case .test = attribute.environment {
                         return true
@@ -329,7 +350,14 @@ public final class SharedAccountContextImpl: SharedAccountContext {
                         return false
                     }
                 })
-                return (authAccount.id, isTestingEnvironment)
+                let isSupportAccount = authAccount.attributes.contains(where: { attribute in
+                    if let attribute = attribute as? AccountEnvironmentAttribute, case true = attribute.isSupportAccount {
+                        return true
+                    } else {
+                        return false
+                    }
+                })
+                return (authAccount.id, isTestingEnvironment, isSupportAccount)
             })
             return (view.currentRecord?.id, result, authRecord)
         }
@@ -351,9 +379,10 @@ public final class SharedAccountContextImpl: SharedAccountContext {
         |> deliverOnMainQueue).start(next: { primaryId, records, authRecord in
             var addedSignals: [Signal<AddedAccountResult, NoError>] = []
             var addedAuthSignal: Signal<UnauthorizedAccount?, NoError> = .single(nil)
+            print("SYD: 1")
             for (id, attributes) in records {
                 if self.activeAccountsValue?.accounts.firstIndex(where: { $0.0 == id}) == nil {
-                    addedSignals.append(accountWithId(accountManager: accountManager, networkArguments: networkArguments, id: id, encryptionParameters: encryptionParameters, supplementary: !applicationBindings.isMainApp, rootPath: rootPath, beginWithTestingEnvironment: attributes.isTestingEnvironment, backupData: attributes.backupData, auxiliaryMethods: telegramAccountAuxiliaryMethods)
+                    addedSignals.append(accountWithId(accountManager: accountManager, networkArguments: networkArguments, id: id, encryptionParameters: encryptionParameters, supplementary: !applicationBindings.isMainApp, rootPath: rootPath, beginWithTestingEnvironment: attributes.isTestingEnvironment, isSupportAccount: attributes.isSupportAccount, backupData: attributes.backupData, auxiliaryMethods: telegramAccountAuxiliaryMethods)
                     |> map { result -> AddedAccountResult in
                         switch result {
                             case let .authorized(account):
@@ -370,7 +399,7 @@ public final class SharedAccountContextImpl: SharedAccountContext {
                 }
             }
             if let authRecord = authRecord, authRecord.0 != self.activeAccountsValue?.currentAuth?.id {
-                addedAuthSignal = accountWithId(accountManager: accountManager, networkArguments: networkArguments, id: authRecord.0, encryptionParameters: encryptionParameters, supplementary: !applicationBindings.isMainApp, rootPath: rootPath, beginWithTestingEnvironment: authRecord.1, backupData: nil, auxiliaryMethods: telegramAccountAuxiliaryMethods)
+                addedAuthSignal = accountWithId(accountManager: accountManager, networkArguments: networkArguments, id: authRecord.0, encryptionParameters: encryptionParameters, supplementary: !applicationBindings.isMainApp, rootPath: rootPath, beginWithTestingEnvironment: authRecord.1, isSupportAccount: authRecord.2, backupData: nil, auxiliaryMethods: telegramAccountAuxiliaryMethods)
                 |> mapToSignal { result -> Signal<UnauthorizedAccount?, NoError> in
                     switch result {
                         case let .unauthorized(account):
@@ -688,6 +717,7 @@ public final class SharedAccountContextImpl: SharedAccountContext {
         self.automaticMediaDownloadSettingsDisposable.dispose()
         self.currentAutodownloadSettingsDisposable.dispose()
         self.inAppNotificationSettingsDisposable?.dispose()
+        self.supportSettingsDisposable?.dispose()
         self.mediaInputSettingsDisposable?.dispose()
         self.callDisposable?.dispose()
         self.callStateDisposable?.dispose()
@@ -818,7 +848,7 @@ public final class SharedAccountContextImpl: SharedAccountContext {
     
     public func beginNewAuth(testingEnvironment: Bool) {
         let _ = self.accountManager.transaction({ transaction -> Void in
-            let _ = transaction.createAuth([AccountEnvironmentAttribute(environment: testingEnvironment ? .test : .production)])
+            let _ = transaction.createAuth([AccountEnvironmentAttribute(environment: testingEnvironment ? .test : .production, isSupportAccount: false)])
         }).start()
     }
     

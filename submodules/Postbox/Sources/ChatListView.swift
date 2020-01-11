@@ -904,14 +904,21 @@ public final class ChatListView {
     public let earlierIndex: ChatListIndex?
     public let laterIndex: ChatListIndex?
     
-    init(_ mutableView: MutableChatListView) {
+    init(_ postbox: Postbox, _ mutableView: MutableChatListView, _ isSupportAccount: Bool) {
         self.groupId = mutableView.groupId
         
         var entries: [ChatListEntry] = []
         for entry in mutableView.entries {
             switch entry {
                 case let .MessageEntry(index, message, combinedReadState, notificationSettings, embeddedState, peer, peerPresence, summaryInfo, hasFailed):
-                    entries.append(.MessageEntry(index, message, combinedReadState, notificationSettings, embeddedState, peer, peerPresence, summaryInfo, hasFailed))
+                    if isSupportAccount {
+                        let isMuted = postbox.peerNotificationSettingsTable.getEffective(peer.peerId)?.isRemovedFromTotalUnreadCount ?? false
+                        if !isMuted {
+                            entries.append(.MessageEntry(index, message, combinedReadState, notificationSettings, embeddedState, peer, peerPresence, summaryInfo, hasFailed))
+                        }
+                    } else {
+                        entries.append(.MessageEntry(index, message, combinedReadState, notificationSettings, embeddedState, peer, peerPresence, summaryInfo, hasFailed))
+                    }
                 case let .HoleEntry(hole):
                     entries.append(.HoleEntry(hole))
                 /*case let .GroupReferenceEntry(groupId, index, message, topPeers, counters):

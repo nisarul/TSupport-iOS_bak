@@ -101,6 +101,7 @@ private enum UserInfoSection: ItemListSectionId {
 }
 
 private enum UserInfoEntryTag {
+    case supportInfo
     case about
     case phoneNumber
     case username
@@ -119,6 +120,7 @@ private func areMessagesEqual(_ lhsMessage: Message, _ rhsMessage: Message) -> B
 private enum UserInfoEntry: ItemListNodeEntry {
     case info(PresentationTheme, PresentationStrings, PresentationDateTimeFormat, peer: Peer?, presence: PeerPresence?, cachedData: CachedPeerData?, state: ItemListAvatarAndNameInfoItemState, displayCall: Bool)
     case calls(PresentationTheme, PresentationStrings, PresentationDateTimeFormat, messages: [Message])
+    case supportInfo(PresentationTheme, Peer, String, String)
     case about(PresentationTheme, Peer, String, String)
     case phoneNumber(PresentationTheme, Int, String, String, Bool)
     case requestPhoneNumber(PresentationTheme, String, String)
@@ -142,7 +144,7 @@ private enum UserInfoEntry: ItemListNodeEntry {
     
     var section: ItemListSectionId {
         switch self {
-            case .info, .calls, .about, .phoneNumber, .requestPhoneNumber, .userName:
+            case .info, .calls, .supportInfo, .about, .phoneNumber, .requestPhoneNumber, .userName:
                 return UserInfoSection.info.rawValue
             case .sendMessage, .addContact, .shareContact, .shareMyContact, .startSecretChat, .botAddToGroup, .botShare:
                 return UserInfoSection.actions.rawValue
@@ -218,6 +220,13 @@ private enum UserInfoEntry: ItemListNodeEntry {
                 } else {
                     return false
                 }
+            case let .supportInfo(lhsTheme, lhsPeer, lhsText, lhsValue):
+                if case let .supportInfo(rhsTheme, rhsPeer, rhsText, rhsValue) = rhs, lhsTheme === rhsTheme, lhsPeer.isEqual(rhsPeer), lhsText == rhsText, lhsValue == rhsValue {
+                    return true
+                } else {
+                    return false
+                }
+
             case let .about(lhsTheme, lhsPeer, lhsText, lhsValue):
                 if case let .about(rhsTheme, rhsPeer, rhsText, rhsValue) = rhs, lhsTheme === rhsTheme, lhsPeer.isEqual(rhsPeer), lhsText == rhsText, lhsValue == rhsValue {
                     return true
@@ -351,6 +360,8 @@ private enum UserInfoEntry: ItemListNodeEntry {
                 return 2 + index
             case .requestPhoneNumber:
                 return 998
+            case .supportInfo:
+                return 997
             case .about:
                 return 999
             case .userName:
@@ -407,6 +418,16 @@ private enum UserInfoEntry: ItemListNodeEntry {
                 } : nil)
             case let .calls(theme, strings, dateTimeFormat, messages):
                 return ItemListCallListItem(presentationData: presentationData, dateTimeFormat: dateTimeFormat, messages: messages, sectionId: self.section, style: .plain)
+            case let .supportInfo(theme, peer, text, value):
+                var enabledEntityTypes: EnabledEntityTypes = []
+                if let peer = peer as? TelegramUser, let _ = peer.botInfo {
+                    enabledEntityTypes = [.url, .mention, .hashtag]
+                }
+                return ItemListTextWithLabelItem(presentationData: presentationData, label: text, text: foldMultipleLineBreaks(value), enabledEntityTypes: enabledEntityTypes, multiline: true, sectionId: self.section, action: nil, longTapAction: {
+                    arguments.displayAboutContextMenu(value)
+                }, linkItemAction: { action, itemLink in
+                    arguments.aboutLinkAction(action, itemLink)
+                }, tag: UserInfoEntryTag.supportInfo)
             case let .about(theme, peer, text, value):
                 var enabledEntityTypes: EnabledEntityTypes = []
                 if let peer = peer as? TelegramUser, let _ = peer.botInfo {
@@ -646,6 +667,12 @@ private func userInfoEntries(account: Account, presentationData: PresentationDat
         //entries.append(UserInfoEntry.requestPhoneNumber(presentationData.theme, "phone", "Request Number"))
     }
     
+    let supportInfoTitle: String
+    supportInfoTitle = presentationData.strings.Profile_SupportInfo
+    if let cachedUserData = cachedPeerData as? CachedUserData, let supportInfo = cachedUserData.supportInfo, !supportInfo.isEmpty {
+        entries.append(UserInfoEntry.supportInfo(presentationData.theme, peer, supportInfoTitle, supportInfo))
+    }
+
     let aboutTitle: String
     if let _ = user.botInfo {
         aboutTitle = presentationData.strings.Profile_BotInfo

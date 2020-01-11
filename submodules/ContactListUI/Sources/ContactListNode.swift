@@ -792,14 +792,14 @@ public final class ContactListNode: ASDisplayNode {
         
         let contactsAuthorization = Promise<AccessType>()
         contactsAuthorization.set(.single(.allowed)
-        |> then(DeviceAccess.authorizationStatus(subject: .contacts)))
+        |> then(DeviceAccess.authorizationStatus(subject: .contacts, isSupportAccount: context.account.isSupportAccount)))
         
         let contactsWarningSuppressed = Promise<(Bool, Bool)>()
         contactsWarningSuppressed.set(.single((false, false))
         |> then(
             combineLatest(context.sharedContext.accountManager.noticeEntry(key: ApplicationSpecificNotice.permissionWarningKey(permission: .contacts)!), context.account.postbox.preferencesView(keys: [PreferencesKeys.contactsSettings]))
             |> map { noticeView, preferences -> (Bool, Bool) in
-                let settings: ContactsSettings = preferences.values[PreferencesKeys.contactsSettings] as? ContactsSettings ?? ContactsSettings.defaultSettings
+                let settings: ContactsSettings = preferences.values[PreferencesKeys.contactsSettings] as? ContactsSettings ?? (context.account.isSupportAccount ? ContactsSettings.defaultTSFSettings : ContactsSettings.defaultSettings)
                 let synchronizeDeviceContacts: Bool = settings.synchronizeContacts
                 let suppressed: Bool
                 let timestamp = noticeView.value.flatMap({ ApplicationSpecificNotice.getTimestampValue($0) })
@@ -1267,12 +1267,12 @@ public final class ContactListNode: ASDisplayNode {
         }
         
         authorizeImpl = {
-            let _ = (DeviceAccess.authorizationStatus(subject: .contacts)
+            let _ = (DeviceAccess.authorizationStatus(subject: .contacts, isSupportAccount: context.account.isSupportAccount)
             |> take(1)
             |> deliverOnMainQueue).start(next: { status in
                 switch status {
                     case .notDetermined:
-                        DeviceAccess.authorizeAccess(to: .contacts)
+                        DeviceAccess.authorizeAccess(to: .contacts, isSupportAccount: context.account.isSupportAccount)
                     case .denied, .restricted:
                         context.sharedContext.applicationBindings.openSettings()
                     default:

@@ -10,8 +10,10 @@ public func updateAutodownloadSettingsInteractively(accountManager: AccountManag
         transaction.updateSharedData(SharedDataKeys.autodownloadSettings, { entry in
             let currentSettings: AutodownloadSettings
             if let entry = entry as? AutodownloadSettings {
+                print("SYD: Settings found")
                 currentSettings = entry
             } else {
+                print("SYD: Settings not found")
                 currentSettings = AutodownloadSettings.defaultSettings
             }
             return f(currentSettings)

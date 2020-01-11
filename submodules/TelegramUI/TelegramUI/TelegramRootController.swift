@@ -93,10 +93,13 @@ public final class TelegramRootController: NavigationController {
         contactsController.switchToChatsController = {  [weak self] in
             self?.openChatsController(activateSearch: false)
         }
-        controllers.append(contactsController)
-        
-        if showCallsTab {
-            controllers.append(callListController)
+        /** TSupport: Disabling Contacts and Calls tab for TSupport accounts **/
+        if !context.account.isSupportAccount {
+            controllers.append(contactsController)
+
+            if showCallsTab {
+                controllers.append(callListController)
+            }
         }
         controllers.append(chatListController)
         
@@ -127,9 +130,11 @@ public final class TelegramRootController: NavigationController {
             return
         }
         var controllers: [ViewController] = []
-        controllers.append(self.contactsController!)
-        if showCallsTab {
-            controllers.append(self.callListController!)
+        if !context.account.isSupportAccount {
+            controllers.append(self.contactsController!)
+            if showCallsTab {
+                controllers.append(self.callListController!)
+            }
         }
         controllers.append(self.chatListController!)
         controllers.append(self.accountSettingsController!)

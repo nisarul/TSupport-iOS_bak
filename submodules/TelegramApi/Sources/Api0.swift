@@ -674,6 +674,8 @@ fileprivate let parsers: [Int32 : (BufferReader) -> Any?] = {
     dict[-395967805] = { return Api.messages.AllStickers.parse_allStickersNotModified($0) }
     dict[-302170017] = { return Api.messages.AllStickers.parse_allStickers($0) }
     dict[-1655957568] = { return Api.PhoneConnection.parse_phoneConnection($0) }
+    dict[-206688531] = { return Api.help.UserInfo.parse_userInfoEmpty($0) }
+    dict[32192344] = { return Api.help.UserInfo.parse_userInfo($0) }
     dict[-1194283041] = { return Api.AccountDaysTTL.parse_accountDaysTTL($0) }
     dict[-1658158621] = { return Api.SecureValueType.parse_secureValueTypePersonalDetails($0) }
     dict[1034709504] = { return Api.SecureValueType.parse_secureValueTypePassport($0) }
@@ -1323,6 +1325,8 @@ public struct Api {
             case let _1 as Api.messages.AllStickers:
                 _1.serialize(buffer, boxed)
             case let _1 as Api.PhoneConnection:
+                _1.serialize(buffer, boxed)
+            case let _1 as Api.help.UserInfo:
                 _1.serialize(buffer, boxed)
             case let _1 as Api.AccountDaysTTL:
                 _1.serialize(buffer, boxed)

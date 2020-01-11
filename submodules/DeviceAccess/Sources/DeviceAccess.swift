@@ -81,7 +81,7 @@ public final class DeviceAccess {
         return AVAudioSession.sharedInstance().recordPermission == .granted
     }
     
-    public static func authorizationStatus(applicationInForeground: Signal<Bool, NoError>? = nil, siriAuthorization: (() -> AccessType)? = nil, subject: DeviceAccessSubject) -> Signal<AccessType, NoError> {
+    public static func authorizationStatus(applicationInForeground: Signal<Bool, NoError>? = nil, siriAuthorization: (() -> AccessType)? = nil, subject: DeviceAccessSubject, isSupportAccount: Bool = false) -> Signal<AccessType, NoError> {
         switch subject {
             case .notifications:
                 let status = (Signal<AccessType, NoError> { subscriber in
@@ -134,6 +134,13 @@ public final class DeviceAccess {
                     return status
                 }
             case .contacts:
+                /** TSupport: Disabling contacts permission **/
+                if (isSupportAccount) {
+                    return Signal { subscriber in
+                        subscriber.putNext(.denied)
+                        return EmptyDisposable
+                    }
+                }
                 let status = Signal<AccessType, NoError> { subscriber in
                     if #available(iOSApplicationExtension 9.0, iOS 9.0, *) {
                         switch CNContactStore.authorizationStatus(for: .contacts) {
@@ -244,7 +251,7 @@ public final class DeviceAccess {
         }
     }
     
-    public static func authorizeAccess(to subject: DeviceAccessSubject, registerForNotifications: ((@escaping (Bool) -> Void) -> Void)? = nil, requestSiriAuthorization: ((@escaping (Bool) -> Void) -> Void)? = nil, locationManager: LocationManager? = nil, presentationData: PresentationData? = nil, present: @escaping (ViewController, Any?) -> Void = { _, _ in }, openSettings: @escaping () -> Void = { }, displayNotificationFromBackground: @escaping (String) -> Void = { _ in }, _ completion: @escaping (Bool) -> Void = { _ in }) {
+    public static func authorizeAccess(to subject: DeviceAccessSubject, registerForNotifications: ((@escaping (Bool) -> Void) -> Void)? = nil, requestSiriAuthorization: ((@escaping (Bool) -> Void) -> Void)? = nil, locationManager: LocationManager? = nil, presentationData: PresentationData? = nil, present: @escaping (ViewController, Any?) -> Void = { _, _ in }, openSettings: @escaping () -> Void = { }, displayNotificationFromBackground: @escaping (String) -> Void = { _ in }, isSupportAccount: Bool = false, _ completion: @escaping (Bool) -> Void = { _ in }) {
             switch subject {
                 case .camera:
                     let status = PGCamera.cameraAuthorizationStatus()
@@ -398,53 +405,59 @@ public final class DeviceAccess {
                             fatalError()
                 }
                 case .contacts:
-                    let _ = (self.contactsPromise.get()
-                    |> take(1)
-                    |> deliverOnMainQueue).start(next: { value in
-                        if let value = value {
-                            completion(value)
-                        } else {
-                            if #available(iOSApplicationExtension 9.0, iOS 9.0, *) {
-                                switch CNContactStore.authorizationStatus(for: .contacts) {
-                                    case .notDetermined:
-                                        let store = CNContactStore()
-                                        store.requestAccess(for: .contacts, completionHandler: { authorized, _ in
-                                            self.contactsPromise.set(.single(authorized))
-                                            completion(authorized)
-                                        })
-                                    case .authorized:
-                                        self.contactsPromise.set(.single(true))
-                                        completion(true)
-                                    default:
-                                        self.contactsPromise.set(.single(false))
-                                        completion(false)
-                                }
-                            } else {
-                                switch ABAddressBookGetAuthorizationStatus() {
-                                    case .notDetermined:
-                                        var error: Unmanaged<CFError>?
-                                        let addressBook = ABAddressBookCreateWithOptions(nil, &error)
-                                        if let addressBook = addressBook?.takeUnretainedValue() {
-                                            ABAddressBookRequestAccessWithCompletion(addressBook, { authorized, _ in
-                                                Queue.mainQueue().async {
-                                                    self.contactsPromise.set(.single(authorized))
-                                                    completion(authorized)
-                                                }
+                    /** TSupport: Disabling contacts permission **/
+                    if (isSupportAccount) {
+                        self.contactsPromise.set(.single(false))
+                        completion(false)
+                    } else {
+                        let _ = (self.contactsPromise.get()
+                            |> take(1)
+                            |> deliverOnMainQueue).start(next: { value in
+                                if let value = value {
+                                    completion(value)
+                                } else {
+                                    if #available(iOSApplicationExtension 9.0, iOS 9.0, *) {
+                                        switch CNContactStore.authorizationStatus(for: .contacts) {
+                                        case .notDetermined:
+                                            let store = CNContactStore()
+                                            store.requestAccess(for: .contacts, completionHandler: { authorized, _ in
+                                                self.contactsPromise.set(.single(authorized))
+                                                completion(authorized)
                                             })
-                                        } else {
+                                        case .authorized:
+                                            self.contactsPromise.set(.single(true))
+                                            completion(true)
+                                        default:
                                             self.contactsPromise.set(.single(false))
                                             completion(false)
                                         }
-                                    case .authorized:
-                                        self.contactsPromise.set(.single(true))
-                                        completion(true)
-                                    default:
-                                        self.contactsPromise.set(.single(false))
-                                        completion(false)
+                                    } else {
+                                        switch ABAddressBookGetAuthorizationStatus() {
+                                        case .notDetermined:
+                                            var error: Unmanaged<CFError>?
+                                            let addressBook = ABAddressBookCreateWithOptions(nil, &error)
+                                            if let addressBook = addressBook?.takeUnretainedValue() {
+                                                ABAddressBookRequestAccessWithCompletion(addressBook, { authorized, _ in
+                                                    Queue.mainQueue().async {
+                                                        self.contactsPromise.set(.single(authorized))
+                                                        completion(authorized)
+                                                    }
+                                                })
+                                            } else {
+                                                self.contactsPromise.set(.single(false))
+                                                completion(false)
+                                            }
+                                        case .authorized:
+                                            self.contactsPromise.set(.single(true))
+                                            completion(true)
+                                        default:
+                                            self.contactsPromise.set(.single(false))
+                                            completion(false)
+                                        }
+                                    }
                                 }
-                            }
-                        }
-                    })
+                            })
+                    }
                 case .notifications:
                     if let registerForNotifications = registerForNotifications {
                         registerForNotifications { result in

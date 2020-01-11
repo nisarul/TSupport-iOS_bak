@@ -684,6 +684,7 @@
 "Settings.BlockedUsers" = "Blocked Users";
 "Settings.ChatBackground" = "Chat Background";
 "Settings.Support" = "Ask a Question";
+"Settings.TSupport" = "Support";
 "Settings.FAQ" = "Telegram FAQ";
 "Settings.FAQ_URL" = "https://telegram.org/faq#general";
 "Settings.FAQ_Intro" = "Please note that Telegram Support is done by volunteers. We try to respond as quickly as possible, but it may take a while.\n\nPlease take a look at the Telegram FAQ: it has important troubleshooting tips and answers to most questions.";
@@ -1967,6 +1968,7 @@
 "Settings.About.Help" = "Any details such as age, occupation or city.\nExample: 23 y.o. designer from San Francisco.";
 
 "Profile.About" = "bio";
+"Profile.SupportInfo" = "info";
 
 "Conversation.StatusKickedFromChannel" = "you were removed from the channel";
 
@@ -4049,6 +4051,11 @@ Unused sets are archived when you add more.";
 "ChatSettings.AutoDownloadSettings.TypeFile" = "Files (%@)";
 "ChatSettings.AutoDownloadSettings.OffForAll" = "Disabled";
 "ChatSettings.AutoDownloadSettings.Delimeter" = ", ";
+
+// Chat Settings
+"SupportSettings.Title" = "Support";
+"SupportSettings.BasicSettingsTitle" = "Basic Support Settings";
+"SupportSettings.Workmode" = "Workmode";
 
 "LogoutOptions.Title" = "Log out";
 "LogoutOptions.AlternativeOptionsSection" = "ALTERNATIVE OPTIONS";

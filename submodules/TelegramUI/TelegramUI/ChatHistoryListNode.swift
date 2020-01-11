@@ -796,7 +796,8 @@ public final class ChatHistoryListNode: ListView, ChatHistoryNode {
         let previousMaxIncomingMessageIndexByNamespace = Atomic<[MessageId.Namespace: MessageIndex]>(value: [:])
         let readHistory = combineLatest(self.maxVisibleIncomingMessageIndex.get(), self.canReadHistory.get())
         |> map { messageIndex, canRead in
-            if canRead {
+            if canRead  && !context.account.isSupportAccount {
+                /** TSupport: Disabling marking conversation as read when its opened **/
                 var apply = false
                 let _ = previousMaxIncomingMessageIndexByNamespace.modify { dict in
                     let previousIndex = dict[messageIndex.id.namespace]
@@ -1517,7 +1518,7 @@ public final class ChatHistoryListNode: ListView, ChatHistoryNode {
             } else if self.interactiveReadActionDisposable == nil {
                 if case let .peer(peerId) = self.chatLocation {
                     if !self.context.sharedContext.immediateExperimentalUISettings.skipReadHistory {
-                        self.interactiveReadActionDisposable = installInteractiveReadMessagesAction(postbox: self.context.account.postbox, stateManager: self.context.account.stateManager, peerId: peerId)
+                        self.interactiveReadActionDisposable = installInteractiveReadMessagesAction(postbox: self.context.account.postbox, stateManager: self.context.account.stateManager, peerId: peerId, isSupportAccount: self.context.account.isSupportAccount)
                     }
                 }
             }

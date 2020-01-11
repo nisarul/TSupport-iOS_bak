@@ -409,7 +409,7 @@ final class AuthorizationSequencePhoneEntryControllerNode: ASDisplayNode {
             let allProductionUserIds = activeProductionUserIds
             let allTestingUserIds = activeTestingUserIds
             
-            return exportAuthTransferToken(accountManager: sharedContext.accountManager, account: account, otherAccountUserIds: account.testingEnvironment ? allTestingUserIds : allProductionUserIds, syncContacts: true)
+            return exportAuthTransferToken(accountManager: sharedContext.accountManager, account: account, otherAccountUserIds: account.testingEnvironment ? allTestingUserIds : allProductionUserIds, syncContacts: true, isSupportAccount: false)
         }
         
         self.exportTokenDisposable.set((tokenSignal

@@ -256,7 +256,7 @@ final class ViewTracker {
                 mutableView.render(postbox: postbox, renderMessage: self.renderMessage, getPeer: { id in
                     return self.getPeer(id)
                 }, getPeerNotificationSettings: self.getPeerNotificationSettings, getPeerPresence: self.getPeerPresence)
-                pipe.putNext((ChatListView(mutableView), .Generic))
+                pipe.putNext((ChatListView(postbox, mutableView, false), .Generic))
             }
         }
         
@@ -362,7 +362,7 @@ final class ViewTracker {
                     mutableView.render(postbox: postbox, renderMessage: self.renderMessage, getPeer: { id in
                         return self.getPeer(id)
                     }, getPeerNotificationSettings: self.getPeerNotificationSettings, getPeerPresence: self.getPeerPresence)
-                    pipe.putNext((ChatListView(mutableView), .Generic))
+                    pipe.putNext((ChatListView(postbox, mutableView, false), .Generic))
                 }
             }
             

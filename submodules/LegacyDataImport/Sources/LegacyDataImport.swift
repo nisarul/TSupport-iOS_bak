@@ -63,7 +63,7 @@ private func importPreferencesData(documentsPath: String, masterDatacenterId: In
         
         if let parsedAccountUserId = parsedAccountUserId {
             return account.postbox.transaction { transaction -> Int32 in
-                transaction.setState(AuthorizedAccountState(isTestingEnvironment: false, masterDatacenterId: masterDatacenterId, peerId: PeerId(namespace: Namespaces.Peer.CloudUser, id: parsedAccountUserId), state: nil))
+                transaction.setState(AuthorizedAccountState(isTestingEnvironment: false, masterDatacenterId: masterDatacenterId, peerId: PeerId(namespace: Namespaces.Peer.CloudUser, id: parsedAccountUserId), isSupportAccount: false, state: nil))
                 return parsedAccountUserId
             }
             |> castError(AccountImportError.self)

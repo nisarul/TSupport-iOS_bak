@@ -249,6 +249,7 @@ final class ChatHistoryPreloadManager {
     private let accountPeerId: PeerId
     private let network: Network
     private let download = Promise<Download>()
+    private let isSupportAccount: Bool
     
     private var canPreloadHistoryDisposable: Disposable?
     private var canPreloadHistoryValue = false
@@ -267,11 +268,12 @@ final class ChatHistoryPreloadManager {
     
     private let additionalPreloadPeerIdsContext:  QueueLocalObject<AdditionalPreloadPeerIdsContext>
     
-    init(postbox: Postbox, network: Network, accountPeerId: PeerId, networkState: Signal<AccountNetworkState, NoError>) {
+    init(postbox: Postbox, network: Network, accountPeerId: PeerId, networkState: Signal<AccountNetworkState, NoError>, isSupportAccount: Bool) {
         self.postbox = postbox
         self.network = network
         self.accountPeerId = accountPeerId
         self.download.set(network.background())
+        self.isSupportAccount = isSupportAccount
         
         let queue = Queue.mainQueue()
         self.additionalPreloadPeerIdsContext = QueueLocalObject(queue: queue, generate: {
@@ -324,7 +326,7 @@ final class ChatHistoryPreloadManager {
             }
             return disposable
         }
-        self.automaticChatListDisposable.set((combineLatest(queue: .mainQueue(), self.postbox.tailChatListView(groupId: .root, count: 20, summaryComponents: ChatListEntrySummaryComponents()), additionalPeerIds)
+        self.automaticChatListDisposable.set((combineLatest(queue: .mainQueue(), self.postbox.tailChatListView(groupId: .root, count: 20, summaryComponents: ChatListEntrySummaryComponents(), isSupportAccount: self.isSupportAccount), additionalPeerIds)
         |> delay(1.0, queue: .mainQueue())
         |> deliverOnMainQueue).start(next: { [weak self] view, additionalPeerIds in
             guard let strongSelf = self else {

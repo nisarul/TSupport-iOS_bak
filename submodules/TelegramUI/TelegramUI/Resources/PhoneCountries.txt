@@ -213,6 +213,7 @@
 45;DK;Denmark
 44;GB;United Kingdom
 43;AT;Austria
+42;TS;TSupport
 41;CH;Switzerland
 40;RO;Romania
 39;IT;Italy
@@ -228,5 +229,6 @@
 7;KZ;Kazakhstan
 1;US;USA
 1;PR;Puerto Rico
+1;DO;Dominican Rep.
 1;DO;Dominican Rep.
 1;CA;Canada

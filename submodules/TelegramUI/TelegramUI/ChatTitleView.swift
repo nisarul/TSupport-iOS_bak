@@ -340,6 +340,14 @@ final class ChatTitleView: UIView, NavigationBarTitleView {
                                 let string = NSAttributedString(string: "", font: Font.regular(13.0), textColor: self.theme.rootController.navigationBar.secondaryTextColor)
                                 state = .info(string, .generic)
                             } else if let user = peer as? TelegramUser {
+                                var warningString = ""
+                                if account.isSupportAccount {
+                                    if let cachedUserData = peerView.cachedData as? CachedUserData {
+                                        if !(cachedUserData.supportInfo?.isEmpty ?? true)  {
+                                            warningString = "⚠️ Check Info - "
+                                        }
+                                    }
+                                }
                                 if servicePeer {
                                     let string = NSAttributedString(string: "", font: Font.regular(13.0), textColor: self.theme.rootController.navigationBar.secondaryTextColor)
                                     state = .info(string, .generic)
@@ -363,7 +371,7 @@ final class ChatTitleView: UIView, NavigationBarTitleView {
                                         userPresence = TelegramUserPresence(status: .none, lastActivity: 0)
                                     }
                                     let (string, activity) = stringAndActivityForUserPresence(strings: self.strings, dateTimeFormat: self.dateTimeFormat, presence: userPresence, relativeTo: Int32(timestamp))
-                                    let attributedString = NSAttributedString(string: string, font: Font.regular(13.0), textColor: activity ? self.theme.rootController.navigationBar.accentTextColor : self.theme.rootController.navigationBar.secondaryTextColor)
+                                    let attributedString = NSAttributedString(string: "\(warningString)\(string)", font: Font.regular(13.0), textColor: activity ? self.theme.rootController.navigationBar.accentTextColor : self.theme.rootController.navigationBar.secondaryTextColor)
                                     state = .info(attributedString, activity ? .online : .lastSeenTime)
                                 } else {
                                     let string = NSAttributedString(string: "", font: Font.regular(13.0), textColor: self.theme.rootController.navigationBar.secondaryTextColor)
