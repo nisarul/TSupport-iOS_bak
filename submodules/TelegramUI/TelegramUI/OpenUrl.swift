@@ -16,8 +16,10 @@ import AccountContext
 import UrlEscaping
 import PassportUI
 import UrlHandling
+#if ENABLE_WALLET
 import WalletUI
 import WalletUrl
+#endif
 import OpenInExternalAppUI
 
 public struct ParsedSecureIdUrl {
@@ -144,6 +146,7 @@ func formattedConfirmationCode(_ code: Int) -> String {
 }
 
 func openExternalUrlImpl(context: AccountContext, urlContext: OpenURLContext, url: String, forceExternal: Bool, presentationData: PresentationData, navigationController: NavigationController?, dismissInput: @escaping () -> Void) {
+    #if ENABLE_WALLET
     if url.hasPrefix("ton://") {
         if let url = URL(string: url), let parsedUrl = parseWalletUrl(url) {
             context.sharedContext.openWallet(context: context, walletContext: .send(address: parsedUrl.address, amount: parsedUrl.amount, comment: parsedUrl.comment)) { c in
@@ -153,6 +156,7 @@ func openExternalUrlImpl(context: AccountContext, urlContext: OpenURLContext, ur
         
         return
     }
+    #endif
     
     if forceExternal || url.lowercased().hasPrefix("tel:") || url.lowercased().hasPrefix("calshow:") {
         context.sharedContext.applicationBindings.openUrl(url)
@@ -209,7 +213,7 @@ func openExternalUrlImpl(context: AccountContext, urlContext: OpenURLContext, ur
                         case .info:
                             let _ = (context.account.postbox.loadedPeerWithId(peerId)
                             |> deliverOnMainQueue).start(next: { peer in
-                                if let infoController = context.sharedContext.makePeerInfoController(context: context, peer: peer, mode: .generic) {
+                                if let infoController = context.sharedContext.makePeerInfoController(context: context, peer: peer, mode: .generic, avatarInitiallyExpanded: false, fromChat: false) {
                                     context.sharedContext.applicationBindings.dismissNativeController()
                                     navigationController?.pushViewController(infoController)
                                 }
@@ -491,7 +495,7 @@ func openExternalUrlImpl(context: AccountContext, urlContext: OpenURLContext, ur
                                 return transaction.getPeer(PeerId(namespace: Namespaces.Peer.CloudUser, id: idValue))
                             }
                             |> deliverOnMainQueue).start(next: { peer in
-                                if let peer = peer, let controller = context.sharedContext.makePeerInfoController(context: context, peer: peer, mode: .generic) {
+                                if let peer = peer, let controller = context.sharedContext.makePeerInfoController(context: context, peer: peer, mode: .generic, avatarInitiallyExpanded: false, fromChat: false) {
                                     navigationController?.pushViewController(controller)
                                 }
                             })

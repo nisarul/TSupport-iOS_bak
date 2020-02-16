@@ -31,6 +31,7 @@ public enum ItemListStickerPackItemControl: Equatable {
     case none
     case installation(installed: Bool)
     case selection
+    case check(checked: Bool)
 }
 
 public final class ItemListStickerPackItem: ListViewItem, ItemListItem {
@@ -305,6 +306,8 @@ class ItemListStickerPackItemNode: ItemListRevealOptionsItemNode {
                 case .selection:
                     rightInset += 16.0
                     checkImage = PresentationResourcesItemList.checkIconImage(item.presentationData.theme)
+                case .check:
+                    rightInset += 16.0
             }
             
             var unreadImage: UIImage?
@@ -324,7 +327,7 @@ class ItemListStickerPackItemNode: ItemListRevealOptionsItemNode {
             let separatorHeight = UIScreenPixel
             
             var editableControlSizeAndApply: (CGFloat, (CGFloat) -> ItemListEditableControlNode)?
-            var reorderControlSizeAndApply: (CGFloat, (CGFloat, Bool) -> ItemListEditableReorderControlNode)?
+            var reorderControlSizeAndApply: (CGFloat, (CGFloat, Bool, ContainedViewLayoutTransition) -> ItemListEditableReorderControlNode)?
             
             var editingOffset: CGFloat = 0.0
             var reorderInset: CGFloat = 0.0
@@ -485,7 +488,7 @@ class ItemListStickerPackItemNode: ItemListRevealOptionsItemNode {
                     
                     if let reorderControlSizeAndApply = reorderControlSizeAndApply {
                         if strongSelf.reorderControlNode == nil {
-                            let reorderControlNode = reorderControlSizeAndApply.1(layout.contentSize.height, false)
+                            let reorderControlNode = reorderControlSizeAndApply.1(layout.contentSize.height, false, .immediate)
                             strongSelf.reorderControlNode = reorderControlNode
                             strongSelf.addSubnode(reorderControlNode)
                             reorderControlNode.alpha = 0.0
@@ -531,6 +534,10 @@ class ItemListStickerPackItemNode: ItemListRevealOptionsItemNode {
                                 strongSelf.selectionIconNode.image = image
                                 strongSelf.selectionIconNode.frame = CGRect(origin: CGPoint(x: params.width - params.rightInset - image.size.width - floor((44.0 - image.size.width) / 2.0), y: floor((contentSize.height - image.size.height) / 2.0)), size: image.size)
                             }
+                        case let .check(checked):
+                            strongSelf.installationActionNode.isHidden = true
+                            strongSelf.installationActionImageNode.isHidden = true
+                            strongSelf.selectionIconNode.isHidden = true
                     }
                     
                     if strongSelf.backgroundNode.supernode == nil {

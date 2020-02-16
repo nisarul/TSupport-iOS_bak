@@ -17,7 +17,6 @@ import AccountContext
 import OverlayStatusController
 import AvatarNode
 import AlertUI
-import PresentationDataUtils
 import TelegramNotices
 import GalleryUI
 import LegacyUI
@@ -33,7 +32,9 @@ import PeerAvatarGalleryUI
 import MapResourceToAvatarSizes
 import AppBundle
 import ContextUI
+#if ENABLE_WALLET
 import WalletUI
+#endif
 import PhoneNumberFormat
 import AccountUtils
 import AuthTransferUI
@@ -224,7 +225,9 @@ private indirect enum SettingsEntry: ItemListNodeEntry {
     case themes(PresentationTheme, UIImage?, String)
     case language(PresentationTheme, UIImage?, String, String)
     case passport(PresentationTheme, UIImage?, String, String)
+    #if ENABLE_WALLET
     case wallet(PresentationTheme, UIImage?, String, String)
+    #endif
     case watch(PresentationTheme, UIImage?, String, String)
     
     case askAQuestion(PresentationTheme, UIImage?, String)
@@ -247,8 +250,12 @@ private indirect enum SettingsEntry: ItemListNodeEntry {
             return SettingsSection.media.rawValue
         case .notificationsAndSounds, .privacyAndSecurity, .dataAndStorage, .themes, .language, .contentStickers:
             return SettingsSection.generalSettings.rawValue
-        case .passport, .wallet, .watch :
+        case .passport, .watch:
             return SettingsSection.advanced.rawValue
+        #if ENABLE_WALLET
+        case .wallet:
+            return SettingsSection.advanced.rawValue
+        #endif
         case .askAQuestion, .faq, .support:
             return SettingsSection.help.rawValue
         }
@@ -294,8 +301,10 @@ private indirect enum SettingsEntry: ItemListNodeEntry {
             return 1012
         case .contentStickers:
             return 1013
+        #if ENABLE_WALLET
         case .wallet:
             return 1014
+        #endif
         case .passport:
             return 1015
         case .watch:
@@ -463,12 +472,14 @@ private indirect enum SettingsEntry: ItemListNodeEntry {
                 } else {
                     return false
                 }
+            #if ENABLE_WALLET
             case let .wallet(lhsTheme, lhsImage, lhsText, lhsValue):
                 if case let .wallet(rhsTheme, rhsImage, rhsText, rhsValue) = rhs, lhsTheme === rhsTheme, lhsImage === rhsImage, lhsText == rhsText, lhsValue == rhsValue {
                     return true
                 } else {
                     return false
                 }
+            #endif
             case let .watch(lhsTheme, lhsImage, lhsText, lhsValue):
                 if case let .watch(rhsTheme, rhsImage, rhsText, rhsValue) = rhs, lhsTheme === rhsTheme, lhsImage === rhsImage, lhsText == rhsText, lhsValue == rhsValue {
                     return true
@@ -608,10 +619,12 @@ private indirect enum SettingsEntry: ItemListNodeEntry {
                 return ItemListDisclosureItem(presentationData: presentationData, icon: image, title: text, label: value, sectionId: ItemListSectionId(self.section), style: .blocks, action: {
                     arguments.openPassport()
                 })
+            #if ENABLE_WALLET
             case let .wallet(theme, image, text, value):
                 return ItemListDisclosureItem(presentationData: presentationData, icon: image, title: text, label: value, sectionId: ItemListSectionId(self.section), style: .blocks, action: {
                     arguments.openWallet()
                 })
+            #endif
             case let .watch(theme, image, text, value):
                 return ItemListDisclosureItem(presentationData: presentationData, icon: image, title: text, label: value, sectionId: ItemListSectionId(self.section), style: .blocks, action: {
                     arguments.openWatch()
@@ -712,9 +725,11 @@ private func settingsEntries(account: Account, presentationData: PresentationDat
         entries.append(.language(presentationData.theme, PresentationResourcesSettings.language, presentationData.strings.Settings_AppLanguage, languageName.isEmpty ? presentationData.strings.Localization_LanguageName : languageName))
         entries.append(.contentStickers(presentationData.theme, PresentationResourcesSettings.stickers, presentationData.strings.ChatSettings_Stickers, unreadTrendingStickerPacks == 0 ? "" : "\(unreadTrendingStickerPacks)", archivedPacks))
         
+        #if ENABLE_WALLET
         if hasWallet {
             entries.append(.wallet(presentationData.theme, PresentationResourcesSettings.wallet, "Gram Wallet", ""))
         }
+        #endif
         if hasPassport {
             entries.append(.passport(presentationData.theme, PresentationResourcesSettings.passport, presentationData.strings.Settings_Passport, ""))
         }
@@ -985,7 +1000,7 @@ public func settingsController(context: AccountContext, accountManager: AccountM
                     blockedPeers.set(.single(blockedPeersContext))
                 }, updatedHasTwoStepAuth: { hasTwoStepAuthValue in
                     hasTwoStepAuthPromise.set(.single(hasTwoStepAuthValue))
-                }, activeSessionsContext: activeSessionsContext, webSessionsContext: webSessionsContext, blockedPeersContext: blockedPeersContext))
+                }, activeSessionsContext: activeSessionsContext, webSessionsContext: webSessionsContext, blockedPeersContext: blockedPeersContext, hasTwoStepAuth: hasTwoStepAuth))
             })
         })
     }, openDataAndStorage: {
@@ -1029,6 +1044,7 @@ public func settingsController(context: AccountContext, accountManager: AccountM
             pushControllerImpl?(SecureIdAuthController(context: context, mode: .list))
         })
     }, openWallet: {
+        #if ENABLE_WALLET
         let _ = (contextValue.get()
         |> deliverOnMainQueue
         |> take(1)).start(next: { context in
@@ -1036,6 +1052,7 @@ public func settingsController(context: AccountContext, accountManager: AccountM
                 pushControllerImpl?(c)
             })
         })
+        #endif
     }, openWatch: {
         let _ = (contextValue.get()
         |> deliverOnMainQueue
@@ -1292,11 +1309,14 @@ public func settingsController(context: AccountContext, accountManager: AccountM
             }
         )
     )
-    
+    #if ENABLE_WALLET
     let hasWallet = contextValue.get()
     |> mapToSignal { context in
         return context.hasWalletAccess
     }
+    #else
+    let hasWallet: Signal<Bool, NoError> = .single(false)
+    #endif
     
     let hasPassport = ValuePromise<Bool>(false)
     let updatePassport: () -> Void = {
@@ -1476,7 +1496,12 @@ public func settingsController(context: AccountContext, accountManager: AccountM
         actionsDisposable.dispose()
     }
     
-    let icon = UIImage(bundleImageName: "Chat List/Tabs/IconSettings")
+    let icon: UIImage?
+    if useSpecialTabBarIcons() {
+        icon = UIImage(bundleImageName: "Chat List/Tabs/Holiday/IconSettings")
+    } else {
+        icon = UIImage(bundleImageName: "Chat List/Tabs/IconSettings")
+    }
     
     let notificationsFromAllAccounts = accountManager.sharedData(keys: [ApplicationSpecificSharedDataKeys.inAppNotificationSettings])
     |> map { sharedData -> Bool in
@@ -1514,9 +1539,10 @@ public func settingsController(context: AccountContext, accountManager: AccountM
         if let primary = primary {
             let size = CGSize(width: 31.0, height: 31.0)
             let inset: CGFloat = 3.0
-            if let signal = peerAvatarImage(account: primary.0, peer: primary.1, authorOfMessage: nil, representation: primary.1.profileImageRepresentations.first, displayDimensions: size, inset: 3.0, emptyColor: nil, synchronousLoad: false) {
+            if let signal = peerAvatarImage(account: primary.0, peerReference: PeerReference(primary.1), authorOfMessage: nil, representation: primary.1.profileImageRepresentations.first, displayDimensions: size, inset: 3.0, emptyColor: nil, synchronousLoad: false) {
                 return signal
-                |> map { image -> (UIImage, UIImage)? in
+                |> map { imageVersions -> (UIImage, UIImage)? in
+                    let image = imageVersions?.0
                     if let image = image, let selectedImage = generateImage(size, rotatedContext: { size, context in
                         context.clear(CGRect(origin: CGPoint(), size: size))
                         context.translateBy(x: size.width / 2.0, y: size.height / 2.0)
@@ -1537,13 +1563,13 @@ public func settingsController(context: AccountContext, accountManager: AccountM
                     let image = generateImage(size, rotatedContext: { size, context in
                         context.clear(CGRect(origin: CGPoint(), size: size))
                         context.translateBy(x: inset, y: inset)
-                        drawPeerAvatarLetters(context: context, size: CGSize(width: size.width - inset * 2.0, height: size.height - inset * 2.0), font: avatarFont, letters: primary.1.displayLetters, accountPeerId: primary.1.id, peerId: primary.1.id)
+                        drawPeerAvatarLetters(context: context, size: CGSize(width: size.width - inset * 2.0, height: size.height - inset * 2.0), font: avatarFont, letters: primary.1.displayLetters, peerId: primary.1.id)
                     })?.withRenderingMode(.alwaysOriginal)
                     
                     let selectedImage = generateImage(size, rotatedContext: { size, context in
                         context.clear(CGRect(origin: CGPoint(), size: size))
                         context.translateBy(x: inset, y: inset)
-                        drawPeerAvatarLetters(context: context, size: CGSize(width: size.width - inset * 2.0, height: size.height - inset * 2.0), font: avatarFont, letters: primary.1.displayLetters, accountPeerId: primary.1.id, peerId: primary.1.id)
+                        drawPeerAvatarLetters(context: context, size: CGSize(width: size.width - inset * 2.0, height: size.height - inset * 2.0), font: avatarFont, letters: primary.1.displayLetters, peerId: primary.1.id)
                         context.translateBy(x: -inset, y: -inset)
                         context.setLineWidth(1.0)
                         context.setStrokeColor(primary.2.rootController.tabBar.selectedIconColor.cgColor)

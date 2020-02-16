@@ -3195,6 +3195,25 @@ public extension Api {
                         return result
                     })
                 }
+            
+                public static func getPollVotes(flags: Int32, peer: Api.InputPeer, id: Int32, option: Buffer?, offset: String?, limit: Int32) -> (FunctionDescription, Buffer, DeserializeFunctionResponse<Api.messages.VotesList>) {
+                    let buffer = Buffer()
+                    buffer.appendInt32(-1200736242)
+                    serializeInt32(flags, buffer: buffer, boxed: false)
+                    peer.serialize(buffer, true)
+                    serializeInt32(id, buffer: buffer, boxed: false)
+                    if Int(flags) & Int(1 << 0) != 0 {serializeBytes(option!, buffer: buffer, boxed: false)}
+                    if Int(flags) & Int(1 << 1) != 0 {serializeString(offset!, buffer: buffer, boxed: false)}
+                    serializeInt32(limit, buffer: buffer, boxed: false)
+                    return (FunctionDescription(name: "messages.getPollVotes", parameters: [("flags", flags), ("peer", peer), ("id", id), ("option", option), ("offset", offset), ("limit", limit)]), buffer, DeserializeFunctionResponse { (buffer: Buffer) -> Api.messages.VotesList? in
+                        let reader = BufferReader(buffer)
+                        var result: Api.messages.VotesList?
+                        if let signature = reader.readInt32() {
+                            result = Api.parse(reader, signature: signature) as? Api.messages.VotesList
+                        }
+                        return result
+                    })
+                }
             }
             public struct channels {
                 public static func readHistory(channel: Api.InputChannel, maxId: Int32) -> (FunctionDescription, Buffer, DeserializeFunctionResponse<Api.Bool>) {
@@ -3862,6 +3881,20 @@ public extension Api {
                         var result: Api.Bool?
                         if let signature = reader.readInt32() {
                             result = Api.parse(reader, signature: signature) as? Api.Bool
+                        }
+                        return result
+                    })
+                }
+            
+                public static func getBankCardData(number: String) -> (FunctionDescription, Buffer, DeserializeFunctionResponse<Api.payments.BankCardData>) {
+                    let buffer = Buffer()
+                    buffer.appendInt32(779736953)
+                    serializeString(number, buffer: buffer, boxed: false)
+                    return (FunctionDescription(name: "payments.getBankCardData", parameters: [("number", number)]), buffer, DeserializeFunctionResponse { (buffer: Buffer) -> Api.payments.BankCardData? in
+                        let reader = BufferReader(buffer)
+                        var result: Api.payments.BankCardData?
+                        if let signature = reader.readInt32() {
+                            result = Api.parse(reader, signature: signature) as? Api.payments.BankCardData
                         }
                         return result
                     })
@@ -4539,11 +4572,13 @@ public extension Api {
                     })
                 }
             
-                public static func getLocated(geoPoint: Api.InputGeoPoint) -> (FunctionDescription, Buffer, DeserializeFunctionResponse<Api.Updates>) {
+                public static func getLocated(flags: Int32, geoPoint: Api.InputGeoPoint, selfExpires: Int32?) -> (FunctionDescription, Buffer, DeserializeFunctionResponse<Api.Updates>) {
                     let buffer = Buffer()
-                    buffer.appendInt32(171270230)
+                    buffer.appendInt32(-750207932)
+                    serializeInt32(flags, buffer: buffer, boxed: false)
                     geoPoint.serialize(buffer, true)
-                    return (FunctionDescription(name: "contacts.getLocated", parameters: [("geoPoint", geoPoint)]), buffer, DeserializeFunctionResponse { (buffer: Buffer) -> Api.Updates? in
+                    if Int(flags) & Int(1 << 0) != 0 {serializeInt32(selfExpires!, buffer: buffer, boxed: false)}
+                    return (FunctionDescription(name: "contacts.getLocated", parameters: [("flags", flags), ("geoPoint", geoPoint), ("selfExpires", selfExpires)]), buffer, DeserializeFunctionResponse { (buffer: Buffer) -> Api.Updates? in
                         let reader = BufferReader(buffer)
                         var result: Api.Updates?
                         if let signature = reader.readInt32() {
@@ -4796,7 +4831,7 @@ public extension Api {
                         return result
                     })
                 }
-
+            
                 public static func editUserInfo(userId: Api.InputUser, message: String, entities: [Api.MessageEntity]) -> (FunctionDescription, Buffer, DeserializeFunctionResponse<Api.help.UserInfo>) {
                     let buffer = Buffer()
                     buffer.appendInt32(1723407216)
@@ -4816,7 +4851,7 @@ public extension Api {
                         return result
                     })
                 }
-
+            
                 public static func getUserInfo(userId: Api.InputUser) -> (FunctionDescription, Buffer, DeserializeFunctionResponse<Api.help.UserInfo>) {
                     let buffer = Buffer()
                     buffer.appendInt32(59377875)

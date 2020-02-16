@@ -409,7 +409,7 @@ class ChatMessageTextBubbleContentNode: ChatMessageBubbleContentNode {
         self.statusNode.layer.animateAlpha(from: 1.0, to: 0.0, duration: 0.2, removeOnCompletion: false)
     }
     
-    override func tapActionAtPoint(_ point: CGPoint, gesture: TapLongTapOrDoubleTapGesture) -> ChatMessageBubbleContentTapAction {
+    override func tapActionAtPoint(_ point: CGPoint, gesture: TapLongTapOrDoubleTapGesture, isEstimating: Bool) -> ChatMessageBubbleContentTapAction {
         let textNodeFrame = self.textNode.frame
         if let (index, attributes) = self.textNode.attributesAtPoint(CGPoint(x: point.x - textNodeFrame.minX, y: point.y - textNodeFrame.minY)) {
             if let url = attributes[NSAttributedString.Key(rawValue: TelegramTextAttributes.URL)] as? String {
@@ -428,6 +428,8 @@ class ChatMessageTextBubbleContentNode: ChatMessageBubbleContentNode {
                 return .hashtag(hashtag.peerName, hashtag.hashtag)
             } else if let timecode = attributes[NSAttributedString.Key(rawValue: TelegramTextAttributes.Timecode)] as? TelegramTimecode {
                 return .timecode(timecode.time, timecode.text)
+            } else if let bankCard = attributes[NSAttributedString.Key(rawValue: TelegramTextAttributes.BankCard)] as? String {
+                return .bankCard(bankCard)
             } else {
                 return .none
             }
@@ -451,7 +453,8 @@ class ChatMessageTextBubbleContentNode: ChatMessageBubbleContentNode {
                         TelegramTextAttributes.PeerTextMention,
                         TelegramTextAttributes.BotCommand,
                         TelegramTextAttributes.Hashtag,
-                        TelegramTextAttributes.Timecode
+                        TelegramTextAttributes.Timecode,
+                        TelegramTextAttributes.BankCard
                     ]
                     for name in possibleNames {
                         if let _ = attributes[NSAttributedString.Key(rawValue: name)] {

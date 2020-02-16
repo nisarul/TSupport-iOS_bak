@@ -20,6 +20,7 @@ public enum PresentationResourceKey: Int32 {
     case navigationShareIcon
     case navigationSearchIcon
     case navigationCompactSearchIcon
+    case navigationMoreIcon
     case navigationAddIcon
     case navigationPlayerCloseButton
     
@@ -48,6 +49,8 @@ public enum PresentationResourceKey: Int32 {
     case itemListVerifiedPeerIcon
     case itemListCloudFetchIcon
     case itemListCloseIconImage
+    case itemListMakeVisibleIcon
+    case itemListMakeInvisibleIcon
     case itemListCornersTop
     case itemListCornersBottom
     case itemListCornersBoth
@@ -77,12 +80,6 @@ public enum PresentationResourceKey: Int32 {
 
     case chatTitleLockIcon
     case chatTitleMuteIcon
-    
-    case chatPrincipalThemeEssentialGraphicsWithWallpaper
-    case chatPrincipalThemeEssentialGraphicsWithoutWallpaper
-    
-    case chatPrincipalThemeAdditionalGraphicsWithCustomWallpaper
-    case chatPrincipalThemeAdditionalGraphicsWithDefaultWallpaper
     
     case chatBubbleVerticalLineIncomingImage
     case chatBubbleVerticalLineOutgoingImage
@@ -234,4 +231,9 @@ public enum PresentationResourceParameterKey: Hashable {
     case chatListBadgeBackgroundMention(CGFloat)
     case chatListBadgeBackgroundInactiveMention(CGFloat)
     case chatListBadgeBackgroundPinned(CGFloat)
+    
+    case chatBubbleMediaCorner(incoming: Bool, mainRadius: CGFloat, inset: CGFloat)
+    
+    case chatPrincipalThemeEssentialGraphics(hasWallpaper: Bool, bubbleCorners: PresentationChatBubbleCorners)
+    case chatPrincipalThemeAdditionalGraphics(isCustomWallpaper: Bool, bubbleCorners: PresentationChatBubbleCorners)
 }

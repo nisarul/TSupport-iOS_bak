@@ -332,7 +332,7 @@ public class GalleryController: ViewController, StandalonePresentableController 
     private let centralItemRightBarButtonItem = Promise<UIBarButtonItem?>()
     private let centralItemRightBarButtonItems = Promise<[UIBarButtonItem]?>(nil)
     private let centralItemNavigationStyle = Promise<GalleryItemNodeNavigationStyle>()
-    private let centralItemFooterContentNode = Promise<GalleryFooterContentNode?>()
+    private let centralItemFooterContentNode = Promise<(GalleryFooterContentNode?, GalleryOverlayContentNode?)>()
     private let centralItemAttributesDisposable = DisposableSet();
     
     private let _hiddenMedia = Promise<(MessageId, Media)?>(nil)
@@ -396,7 +396,7 @@ public class GalleryController: ViewController, StandalonePresentableController 
                         } else {
                             namespaces = .not(Namespaces.Message.allScheduled)
                         }
-                        return context.account.postbox.aroundMessageHistoryViewForLocation(.peer(message!.id.peerId), anchor: .index(message!.index), count: 50, fixedCombinedReadStates: nil, topTaggedMessageIdNamespaces: [], tagMask: tags, namespaces: namespaces, orderStatistics: [.combinedLocation])
+                        return context.account.postbox.aroundMessageHistoryViewForLocation(.peer(message!.id.peerId), anchor: .index(message!.index), count: 50, clipHoles: false, fixedCombinedReadStates: nil, topTaggedMessageIdNamespaces: [], tagMask: tags, namespaces: namespaces, orderStatistics: [.combinedLocation])
                         |> mapToSignal { (view, _, _) -> Signal<GalleryMessageHistoryView?, NoError> in
                             let mapped = GalleryMessageHistoryView.view(view)
                             return .single(mapped)
@@ -531,9 +531,9 @@ public class GalleryController: ViewController, StandalonePresentableController 
             }
         }))
         
-        self.centralItemAttributesDisposable.add(self.centralItemFooterContentNode.get().start(next: { [weak self] footerContentNode in
+        self.centralItemAttributesDisposable.add(self.centralItemFooterContentNode.get().start(next: { [weak self] footerContentNode, overlayContentNode in
             self?.galleryNode.updatePresentationState({
-                $0.withUpdatedFooterContentNode(footerContentNode)
+                $0.withUpdatedFooterContentNode(footerContentNode).withUpdatedOverlayContentNode(overlayContentNode)
             }, transition: .immediate)
         }))
         

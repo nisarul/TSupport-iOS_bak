@@ -8,7 +8,10 @@ import SwiftSignalKit
 import Display
 import DeviceLocationManager
 import TemporaryCachedPeerDataManager
+
+#if ENABLE_WALLET
 import WalletCore
+#endif
 
 public final class TelegramApplicationOpenUrlCompletion {
     public let completion: (Bool) -> Void
@@ -175,7 +178,9 @@ public enum ResolvedUrl {
     case share(url: String?, text: String?, to: String?)
     case wallpaper(WallpaperUrlParameter)
     case theme(String)
+    #if ENABLE_WALLET
     case wallet(address: String, amount: Int64?, comment: String?)
+    #endif
     case settings(ResolvedUrlSettingsSection)
 }
 
@@ -197,12 +202,13 @@ public final class NavigateToChatControllerParams {
     public let keepStack: NavigateToChatKeepStack
     public let purposefulAction: (() -> Void)?
     public let scrollToEndIfExists: Bool
+    public let activateMessageSearch: Bool
     public let animated: Bool
     public let options: NavigationAnimationOptions
     public let parentGroupId: PeerGroupId?
     public let completion: () -> Void
     
-    public init(navigationController: NavigationController, chatController: ChatController? = nil, context: AccountContext, chatLocation: ChatLocation, subject: ChatControllerSubject? = nil, botStart: ChatControllerInitialBotStart? = nil, updateTextInputState: ChatTextInputState? = nil, activateInput: Bool = false, keepStack: NavigateToChatKeepStack = .default, purposefulAction: (() -> Void)? = nil, scrollToEndIfExists: Bool = false, animated: Bool = true, options: NavigationAnimationOptions = [], parentGroupId: PeerGroupId? = nil, completion: @escaping () -> Void = {}) {
+    public init(navigationController: NavigationController, chatController: ChatController? = nil, context: AccountContext, chatLocation: ChatLocation, subject: ChatControllerSubject? = nil, botStart: ChatControllerInitialBotStart? = nil, updateTextInputState: ChatTextInputState? = nil, activateInput: Bool = false, keepStack: NavigateToChatKeepStack = .default, purposefulAction: (() -> Void)? = nil, scrollToEndIfExists: Bool = false, activateMessageSearch: Bool = false, animated: Bool = true, options: NavigationAnimationOptions = [], parentGroupId: PeerGroupId? = nil, completion: @escaping () -> Void = {}) {
         self.navigationController = navigationController
         self.chatController = chatController
         self.context = context
@@ -214,6 +220,7 @@ public final class NavigateToChatControllerParams {
         self.keepStack = keepStack
         self.purposefulAction = purposefulAction
         self.scrollToEndIfExists = scrollToEndIfExists
+        self.activateMessageSearch = activateMessageSearch
         self.animated = animated
         self.options = options
         self.parentGroupId = parentGroupId
@@ -252,6 +259,7 @@ public enum DeviceContactInfoSubject {
 public enum PeerInfoControllerMode {
     case generic
     case calls(messages: [Message])
+    case nearbyPeer
 }
 
 public enum ContactListActionItemInlineIconPosition {
@@ -378,10 +386,12 @@ public final class ContactSelectionControllerParams {
     }
 }
 
+#if ENABLE_WALLET
 public enum OpenWalletContext {
     case generic
     case send(address: String, amount: Int64?, comment: String?)
 }
+#endif
 
 public let defaultContactLabel: String = "_$!<Mobile>!$_"
 
@@ -440,14 +450,14 @@ public protocol SharedAccountContext: class {
     func openChatMessage(_ params: OpenChatMessageParams) -> Bool
     func messageFromPreloadedChatHistoryViewForLocation(id: MessageId, location: ChatHistoryLocationInput, account: Account, chatLocation: ChatLocation, tagMask: MessageTags?) -> Signal<(MessageIndex?, Bool), NoError>
     func makeOverlayAudioPlayerController(context: AccountContext, peerId: PeerId, type: MediaManagerPlayerType, initialMessageId: MessageId, initialOrder: MusicPlaybackSettingsOrder, parentNavigationController: NavigationController?) -> ViewController & OverlayAudioPlayerController
-    func makePeerInfoController(context: AccountContext, peer: Peer, mode: PeerInfoControllerMode) -> ViewController?
+    func makePeerInfoController(context: AccountContext, peer: Peer, mode: PeerInfoControllerMode, avatarInitiallyExpanded: Bool, fromChat: Bool) -> ViewController?
     func makeDeviceContactInfoController(context: AccountContext, subject: DeviceContactInfoSubject, completed: (() -> Void)?, cancelled: (() -> Void)?) -> ViewController
     func makePeersNearbyController(context: AccountContext) -> ViewController
     func makeComposeController(context: AccountContext) -> ViewController
     func makeChatListController(context: AccountContext, groupId: PeerGroupId, controlsHistoryPreload: Bool, hideNetworkActivityStatus: Bool, previewing: Bool, enableDebugActions: Bool) -> ChatListController
     func makeChatController(context: AccountContext, chatLocation: ChatLocation, subject: ChatControllerSubject?, botStart: ChatControllerInitialBotStart?, mode: ChatControllerPresentationMode) -> ChatController
-    func makeChatMessagePreviewItem(context: AccountContext, message: Message, theme: PresentationTheme, strings: PresentationStrings, wallpaper: TelegramWallpaper, fontSize: PresentationFontSize, dateTimeFormat: PresentationDateTimeFormat, nameOrder: PresentationPersonNameOrder, forcedResourceStatus: FileMediaResourceStatus?, tapMessage: ((Message) -> Void)?, clickThroughMessage: (() -> Void)?) -> ListViewItem
-    func makeChatMessageDateHeaderItem(context: AccountContext, timestamp: Int32, theme: PresentationTheme, strings: PresentationStrings, wallpaper: TelegramWallpaper, fontSize: PresentationFontSize, dateTimeFormat: PresentationDateTimeFormat, nameOrder: PresentationPersonNameOrder) -> ListViewItemHeader
+    func makeChatMessagePreviewItem(context: AccountContext, message: Message, theme: PresentationTheme, strings: PresentationStrings, wallpaper: TelegramWallpaper, fontSize: PresentationFontSize, chatBubbleCorners: PresentationChatBubbleCorners, dateTimeFormat: PresentationDateTimeFormat, nameOrder: PresentationPersonNameOrder, forcedResourceStatus: FileMediaResourceStatus?, tapMessage: ((Message) -> Void)?, clickThroughMessage: (() -> Void)?) -> ListViewItem
+    func makeChatMessageDateHeaderItem(context: AccountContext, timestamp: Int32, theme: PresentationTheme, strings: PresentationStrings, wallpaper: TelegramWallpaper, fontSize: PresentationFontSize, chatBubbleCorners: PresentationChatBubbleCorners, dateTimeFormat: PresentationDateTimeFormat, nameOrder: PresentationPersonNameOrder) -> ListViewItemHeader
     func makePeerSharedMediaController(context: AccountContext, peerId: PeerId) -> ViewController?
     func makeContactSelectionController(_ params: ContactSelectionControllerParams) -> ContactSelectionController
     func makeContactMultiselectionController(_ params: ContactMultiselectionControllerParams) -> ContactMultiselectionController
@@ -464,7 +474,9 @@ public protocol SharedAccountContext: class {
     func openAddContact(context: AccountContext, firstName: String, lastName: String, phoneNumber: String, label: String, present: @escaping (ViewController, Any?) -> Void, pushController: @escaping (ViewController) -> Void, completed: @escaping () -> Void)
     func openAddPersonContact(context: AccountContext, peerId: PeerId, pushController: @escaping (ViewController) -> Void, present: @escaping (ViewController, Any?) -> Void)
     func presentContactsWarningSuppression(context: AccountContext, present: (ViewController, Any?) -> Void)
+    #if ENABLE_WALLET
     func openWallet(context: AccountContext, walletContext: OpenWalletContext, present: @escaping (ViewController) -> Void)
+    #endif
     func openImagePicker(context: AccountContext, completion: @escaping (UIImage) -> Void, present: @escaping (ViewController) -> Void)
     
     func makeRecentSessionsController(context: AccountContext, activeSessionsContext: ActiveSessionsContext) -> ViewController & RecentSessionsController
@@ -477,6 +489,7 @@ public protocol SharedAccountContext: class {
     func beginNewAuth(testingEnvironment: Bool)
 }
 
+#if ENABLE_WALLET
 private final class TonInstanceData {
     var config: String?
     var blockchainName: String?
@@ -541,10 +554,15 @@ public final class TonContext {
     }
 }
 
+#endif
+
 public protocol AccountContext: class {
     var sharedContext: SharedAccountContext { get }
     var account: Account { get }
+    
+    #if ENABLE_WALLET
     var tonContext: StoredTonContext? { get }
+    #endif
     
     var liveLocationManager: LiveLocationManager? { get }
     var fetchManager: FetchManager { get }
@@ -552,8 +570,11 @@ public protocol AccountContext: class {
     var peerChannelMemberCategoriesContextsManager: PeerChannelMemberCategoriesContextsManager { get }
     var wallpaperUploadManager: WallpaperUploadManager? { get }
     var watchManager: WatchManager? { get }
+    
+    #if ENABLE_WALLET
     var hasWallets: Signal<Bool, NoError> { get }
     var hasWalletAccess: Signal<Bool, NoError> { get }
+    #endif
     
     var currentLimitsConfiguration: Atomic<LimitsConfiguration> { get }
     var currentContentSettings: Atomic<ContentSettings> { get }

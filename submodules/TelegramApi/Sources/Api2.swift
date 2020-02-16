@@ -490,6 +490,50 @@ public struct payments {
         }
     
     }
+    public enum BankCardData: TypeConstructorDescription {
+        case bankCardData(title: String, openUrls: [Api.BankCardOpenUrl])
+    
+    public func serialize(_ buffer: Buffer, _ boxed: Swift.Bool) {
+    switch self {
+                case .bankCardData(let title, let openUrls):
+                    if boxed {
+                        buffer.appendInt32(1042605427)
+                    }
+                    serializeString(title, buffer: buffer, boxed: false)
+                    buffer.appendInt32(481674261)
+                    buffer.appendInt32(Int32(openUrls.count))
+                    for item in openUrls {
+                        item.serialize(buffer, true)
+                    }
+                    break
+    }
+    }
+    
+    public func descriptionFields() -> (String, [(String, Any)]) {
+        switch self {
+                case .bankCardData(let title, let openUrls):
+                return ("bankCardData", [("title", title), ("openUrls", openUrls)])
+    }
+    }
+    
+        public static func parse_bankCardData(_ reader: BufferReader) -> BankCardData? {
+            var _1: String?
+            _1 = parseString(reader)
+            var _2: [Api.BankCardOpenUrl]?
+            if let _ = reader.readInt32() {
+                _2 = Api.parseVector(reader, elementSignature: 0, elementType: Api.BankCardOpenUrl.self)
+            }
+            let _c1 = _1 != nil
+            let _c2 = _2 != nil
+            if _c1 && _c2 {
+                return Api.payments.BankCardData.bankCardData(title: _1!, openUrls: _2!)
+            }
+            else {
+                return nil
+            }
+        }
+    
+    }
 }
 }
 public extension Api {
@@ -857,76 +901,6 @@ public struct auth {
         }
         public static func parse_codeTypeFlashCall(_ reader: BufferReader) -> CodeType? {
             return Api.auth.CodeType.codeTypeFlashCall
-        }
-    
-    }
-    public enum LoginTokenInfo: TypeConstructorDescription {
-        case loginTokenInfo(dcId: Int32, authKeyId: Int64, deviceModel: String, platform: String, systemVersion: String, apiId: Int32, appName: String, appVersion: String, ip: String, region: String)
-    
-    public func serialize(_ buffer: Buffer, _ boxed: Swift.Bool) {
-    switch self {
-                case .loginTokenInfo(let dcId, let authKeyId, let deviceModel, let platform, let systemVersion, let apiId, let appName, let appVersion, let ip, let region):
-                    if boxed {
-                        buffer.appendInt32(1375940666)
-                    }
-                    serializeInt32(dcId, buffer: buffer, boxed: false)
-                    serializeInt64(authKeyId, buffer: buffer, boxed: false)
-                    serializeString(deviceModel, buffer: buffer, boxed: false)
-                    serializeString(platform, buffer: buffer, boxed: false)
-                    serializeString(systemVersion, buffer: buffer, boxed: false)
-                    serializeInt32(apiId, buffer: buffer, boxed: false)
-                    serializeString(appName, buffer: buffer, boxed: false)
-                    serializeString(appVersion, buffer: buffer, boxed: false)
-                    serializeString(ip, buffer: buffer, boxed: false)
-                    serializeString(region, buffer: buffer, boxed: false)
-                    break
-    }
-    }
-    
-    public func descriptionFields() -> (String, [(String, Any)]) {
-        switch self {
-                case .loginTokenInfo(let dcId, let authKeyId, let deviceModel, let platform, let systemVersion, let apiId, let appName, let appVersion, let ip, let region):
-                return ("loginTokenInfo", [("dcId", dcId), ("authKeyId", authKeyId), ("deviceModel", deviceModel), ("platform", platform), ("systemVersion", systemVersion), ("apiId", apiId), ("appName", appName), ("appVersion", appVersion), ("ip", ip), ("region", region)])
-    }
-    }
-    
-        public static func parse_loginTokenInfo(_ reader: BufferReader) -> LoginTokenInfo? {
-            var _1: Int32?
-            _1 = reader.readInt32()
-            var _2: Int64?
-            _2 = reader.readInt64()
-            var _3: String?
-            _3 = parseString(reader)
-            var _4: String?
-            _4 = parseString(reader)
-            var _5: String?
-            _5 = parseString(reader)
-            var _6: Int32?
-            _6 = reader.readInt32()
-            var _7: String?
-            _7 = parseString(reader)
-            var _8: String?
-            _8 = parseString(reader)
-            var _9: String?
-            _9 = parseString(reader)
-            var _10: String?
-            _10 = parseString(reader)
-            let _c1 = _1 != nil
-            let _c2 = _2 != nil
-            let _c3 = _3 != nil
-            let _c4 = _4 != nil
-            let _c5 = _5 != nil
-            let _c6 = _6 != nil
-            let _c7 = _7 != nil
-            let _c8 = _8 != nil
-            let _c9 = _9 != nil
-            let _c10 = _10 != nil
-            if _c1 && _c2 && _c3 && _c4 && _c5 && _c6 && _c7 && _c8 && _c9 && _c10 {
-                return Api.auth.LoginTokenInfo.loginTokenInfo(dcId: _1!, authKeyId: _2!, deviceModel: _3!, platform: _4!, systemVersion: _5!, apiId: _6!, appName: _7!, appVersion: _8!, ip: _9!, region: _10!)
-            }
-            else {
-                return nil
-            }
         }
     
     }
@@ -1933,14 +1907,14 @@ public struct help {
     public enum UserInfo: TypeConstructorDescription {
         case userInfoEmpty
         case userInfo(message: String, entities: [Api.MessageEntity], author: String, date: Int32)
-
+    
     public func serialize(_ buffer: Buffer, _ boxed: Swift.Bool) {
     switch self {
                 case .userInfoEmpty:
                     if boxed {
                         buffer.appendInt32(-206688531)
                     }
-
+                    
                     break
                 case .userInfo(let message, let entities, let author, let date):
                     if boxed {
@@ -1957,7 +1931,7 @@ public struct help {
                     break
     }
     }
-
+    
     public func descriptionFields() -> (String, [(String, Any)]) {
         switch self {
                 case .userInfoEmpty:
@@ -1966,7 +1940,7 @@ public struct help {
                 return ("userInfo", [("message", message), ("entities", entities), ("author", author), ("date", date)])
     }
     }
-
+    
         public static func parse_userInfoEmpty(_ reader: BufferReader) -> UserInfo? {
             return Api.help.UserInfo.userInfoEmpty
         }
@@ -1992,7 +1966,7 @@ public struct help {
                 return nil
             }
         }
-
+    
     }
     public enum TermsOfServiceUpdate: TypeConstructorDescription {
         case termsOfServiceUpdateEmpty(expires: Int32)

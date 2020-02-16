@@ -522,6 +522,7 @@ func fetchAndUpdateCachedPeerData(accountPeerId: PeerId, peerId rawPeerId: PeerI
                                                     .withUpdatedSlowModeTimeout(slowmodeSeconds)
                                                     .withUpdatedSlowModeValidUntilTimestamp(slowmodeNextSendDate)
                                                     .withUpdatedHasScheduledMessages(hasScheduledMessages)
+//                                                    .withUpdatedStatsDatacenterId(statsDc ?? 0)
                                             })
                                         
                                             if let minAvailableMessageId = minAvailableMessageId, minAvailableMessageIdUpdated {
