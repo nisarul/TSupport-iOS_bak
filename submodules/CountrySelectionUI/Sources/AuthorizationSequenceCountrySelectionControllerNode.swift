@@ -61,10 +61,12 @@ func localizedContryNamesAndCodes(strings: PresentationStrings) -> [((String, St
     let locale = localeWithStrings(strings)
     var result: [((String, String), String, Int)] = []
     for (id, code) in countryCodes {
-        if let englishCountryName = usEnglishLocale.localizedString(forRegionCode: id), let countryName = locale.localizedString(forRegionCode: id) {
-            result.append(((englishCountryName, countryName), id, code))
-        } else {
-            assertionFailure()
+        if id != "TS" {
+            if let englishCountryName = usEnglishLocale.localizedString(forRegionCode: id), let countryName = locale.localizedString(forRegionCode: id) {
+                result.append(((englishCountryName, countryName), id, code))
+            } else {
+                assertionFailure()
+            }
         }
     }
     return result

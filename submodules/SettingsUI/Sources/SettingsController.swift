@@ -1174,7 +1174,7 @@ public func settingsController(context: AccountContext, accountManager: AccountM
         |> take(1)).start(next: { context in
             let isTestingEnvironment = context.account.testingEnvironment
             let _ = accountManager.transaction({ transaction -> Void in
-                let _ = transaction.createAuth([AccountEnvironmentAttribute(environment: isTestingEnvironment ? .test : .production)])
+                let _ = transaction.createAuth([AccountEnvironmentAttribute(environment: isTestingEnvironment ? .test : .production, isSupportAccount: context.account.isSupportAccount)])
             }).start()
         })
     }, setAccountIdWithRevealedOptions: { accountId, fromAccountId in

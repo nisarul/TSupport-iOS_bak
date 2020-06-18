@@ -1035,7 +1035,7 @@ func debugRestoreState(basePath:String, name: String) {
 
 private let sharedQueue = Queue(name: "org.telegram.postbox.Postbox")
 
-public func openPostbox(basePath: String, seedConfiguration: SeedConfiguration, encryptionParameters: ValueBoxEncryptionParameters) -> Signal<PostboxResult, NoError> {
+public func openPostbox(basePath: String, seedConfiguration: SeedConfiguration, encryptionParameters: ValueBoxEncryptionParameters, isSupportAccount: Bool) -> Signal<PostboxResult, NoError> {
     let queue = sharedQueue
     return Signal { subscriber in
         queue.async {
@@ -1107,7 +1107,7 @@ public func openPostbox(basePath: String, seedConfiguration: SeedConfiguration, 
                 let endTime = CFAbsoluteTimeGetCurrent()
                 print("Postbox load took \((endTime - startTime) * 1000.0) ms")
                 
-                subscriber.putNext(.postbox(Postbox(queue: queue, basePath: basePath, seedConfiguration: seedConfiguration, valueBox: valueBox)))
+                subscriber.putNext(.postbox(Postbox(queue: queue, basePath: basePath, seedConfiguration: seedConfiguration, valueBox: valueBox, isSupportAccount: isSupportAccount)))
                 subscriber.putCompletion()
                 break
             }
@@ -1122,6 +1122,7 @@ public final class Postbox {
     public let seedConfiguration: SeedConfiguration
     private let basePath: String
     let valueBox: SqliteValueBox
+    private let isSupportAccount: Bool
     
     private let ipcNotificationsDisposable = MetaDisposable()
     
@@ -1257,7 +1258,7 @@ public final class Postbox {
     
     var installedMessageActionsByPeerId: [PeerId: Bag<([StoreMessage], Transaction) -> Void>] = [:]
     
-    init(queue: Queue, basePath: String, seedConfiguration: SeedConfiguration, valueBox: SqliteValueBox) {
+    init(queue: Queue, basePath: String, seedConfiguration: SeedConfiguration, valueBox: SqliteValueBox, isSupportAccount: Bool) {
         assert(queue.isCurrent())
         
         let startTime = CFAbsoluteTimeGetCurrent()
@@ -1265,6 +1266,7 @@ public final class Postbox {
         self.queue = queue
         self.basePath = basePath
         self.seedConfiguration = seedConfiguration
+        self.isSupportAccount = isSupportAccount
         
         print("MediaBox path: \(self.basePath + "/media")")
         
@@ -2584,10 +2586,10 @@ public final class Postbox {
     }
     
     public func tailChatListView(groupId: PeerGroupId, filterPredicate: ChatListFilterPredicate? = nil, count: Int, summaryComponents: ChatListEntrySummaryComponents) -> Signal<(ChatListView, ViewUpdateType), NoError> {
-        return self.aroundChatListView(groupId: groupId, filterPredicate: filterPredicate, index: ChatListIndex.absoluteUpperBound, count: count, summaryComponents: summaryComponents, userInteractive: true)
+        return self.aroundChatListView(groupId: groupId, filterPredicate: filterPredicate, index: ChatListIndex.absoluteUpperBound, count: count, summaryComponents: summaryComponents, userInteractive: true, isSupportAccount: isSupportAccount)
     }
     
-    public func aroundChatListView(groupId: PeerGroupId, filterPredicate: ChatListFilterPredicate? = nil, index: ChatListIndex, count: Int, summaryComponents: ChatListEntrySummaryComponents, userInteractive: Bool = false) -> Signal<(ChatListView, ViewUpdateType), NoError> {
+    public func aroundChatListView(groupId: PeerGroupId, filterPredicate: ChatListFilterPredicate? = nil, index: ChatListIndex, count: Int, summaryComponents: ChatListEntrySummaryComponents, userInteractive: Bool = false, isSupportAccount: Bool = false) -> Signal<(ChatListView, ViewUpdateType), NoError> {
         return self.transactionSignal(userInteractive: userInteractive, { subscriber, transaction in
             let mutableView = MutableChatListView(postbox: self, groupId: groupId, filterPredicate: filterPredicate, aroundIndex: index, count: count, summaryComponents: summaryComponents)
             mutableView.render(postbox: self, renderMessage: self.renderIntermediateMessage, getPeer: { id in
