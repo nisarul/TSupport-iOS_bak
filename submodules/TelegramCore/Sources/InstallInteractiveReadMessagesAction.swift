@@ -5,10 +5,16 @@ import SwiftSignalKit
 
 import SyncCore
 
-public func installInteractiveReadMessagesAction(postbox: Postbox, stateManager: AccountStateManager, peerId: PeerId) -> Disposable {
+public func installInteractiveReadMessagesAction(postbox: Postbox, stateManager: AccountStateManager, peerId: PeerId, isSupportAccount: Bool) -> Disposable {
     return postbox.installStoreMessageAction(peerId: peerId, { messages, transaction in
         var consumeMessageIds: [MessageId] = []
         
+        print("SYD: installInteractiveReadMessagesAction isSupportAccount: \(isSupportAccount)")
+        /** TSupport: Disabling marking new message as read when conversation is opened **/
+        if (isSupportAccount) {
+            return
+        }
+
         var readMessageIndexByNamespace: [MessageId.Namespace: MessageIndex] = [:]
         
         for message in messages {

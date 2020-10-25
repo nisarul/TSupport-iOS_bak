@@ -28,7 +28,13 @@ public func removePeerChat(account: Account, transaction: Transaction, mediaBox:
     if let _ = transaction.getPeerChatInterfaceState(peerId) {
         transaction.updatePeerChatInterfaceState(peerId, update: { current in
             if let current = current {
-                return account.auxiliaryMethods.updatePeerChatInputState(current, nil)
+                print("SYD: removePeerChat: account.isSupportAccount: \(account.isSupportAccount)")
+                /** TSupport: Disable reading drafts from cloud.**/
+                if !account.isSupportAccount {
+                    return account.auxiliaryMethods.updatePeerChatInputState(current, nil)
+                } else {
+                    return nil
+                }
             } else {
                 return nil
             }

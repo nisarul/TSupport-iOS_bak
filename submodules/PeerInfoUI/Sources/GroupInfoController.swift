@@ -1538,7 +1538,8 @@ public func groupInfoController(context: AccountContext, peerId originalPeerId: 
             let presentationData = context.sharedContext.currentPresentationData.with { $0 }
             let _ = (context.account.postbox.transaction { transaction -> (TelegramPeerNotificationSettings, GlobalNotificationSettings) in
                 let peerSettings: TelegramPeerNotificationSettings = (transaction.getPeerNotificationSettings(peerView.peerId) as? TelegramPeerNotificationSettings) ?? TelegramPeerNotificationSettings.defaultSettings
-                let globalSettings: GlobalNotificationSettings = (transaction.getPreferencesEntry(key: PreferencesKeys.globalNotifications) as? GlobalNotificationSettings) ?? GlobalNotificationSettings.defaultSettings
+                /** TSupport: Have separate default setting for support account **/
+                let globalSettings: GlobalNotificationSettings = (transaction.getPreferencesEntry(key: PreferencesKeys.globalNotifications) as? GlobalNotificationSettings) ?? (context.account.isSupportAccount ? GlobalNotificationSettings.defaultSupportSettings : GlobalNotificationSettings.defaultSettings)
                 return (peerSettings, globalSettings)
             }
             |> deliverOnMainQueue).start(next: { peerSettings, globalSettings in
@@ -2209,7 +2210,8 @@ public func groupInfoController(context: AccountContext, peerId originalPeerId: 
     |> map { presentationData, state, view, combinedView, channelMembers -> (ItemListControllerState, (ItemListNodeState, Any)) in
         let peer = peerViewMainPeer(view)
         
-        var globalNotificationSettings: GlobalNotificationSettings = GlobalNotificationSettings.defaultSettings
+        /** TSupport: Have separate default setting for support account **/
+        var globalNotificationSettings: GlobalNotificationSettings = context.account.isSupportAccount ? GlobalNotificationSettings.defaultSupportSettings : GlobalNotificationSettings.defaultSettings
         if let preferencesView = combinedView.views[globalNotificationsKey] as? PreferencesView {
             if let settings = preferencesView.values[PreferencesKeys.globalNotifications] as? GlobalNotificationSettings {
                 globalNotificationSettings = settings

@@ -463,6 +463,7 @@ private enum PeerInfoMemberAction {
 
 private enum PeerInfoContextSubject {
     case bio
+    case supportInfo
     case phone(String)
     case link
 }
@@ -580,6 +581,9 @@ private func infoItems(data: PeerInfoScreenData?, context: AccountContext, prese
     let bioContextAction: (ASDisplayNode) -> Void = { sourceNode in
         interaction.openPeerInfoContextMenu(.bio, sourceNode)
     }
+    let supportInfoContextAction: (ASDisplayNode) -> Void = { sourceNode in
+        interaction.openPeerInfoContextMenu(.supportInfo, sourceNode)
+    }
     let bioLinkAction: (TextLinkItemActionType, TextLinkItem) -> Void = { action, item in
         interaction.performBioLinkAction(action, item)
     }
@@ -609,6 +613,18 @@ private func infoItems(data: PeerInfoScreenData?, context: AccountContext, prese
             }))
         }
         if let cachedData = data.cachedData as? CachedUserData {
+            // TODO
+            /*
+            items[.peerInfo]!.append(PeerInfoScreenLabeledValueItem(id: 30, label: presentationData.strings.Profile_SupportInfo, text: "SYED here", textColor: .primary, textBehavior: .multiLine(maxLines: 100, enabledEntities: []), action: nil, longTapAction: supportInfoContextAction, linkItemAction: bioLinkAction, requestLayout: {
+                interaction.requestLayout()
+            }))*/
+            if let supportInfo = cachedData.supportInfo, !supportInfo.message.isEmpty {
+                let dateFormatter = DateFormatter()
+                dateFormatter.dateFormat = "dd.MM.yy, h:mm a"
+                items[.peerInfo]!.append(PeerInfoScreenLabeledValueItem(id: 30, label: presentationData.strings.Profile_SupportInfo+" ("+supportInfo.author+", "+dateFormatter.string(from: supportInfo.date)+")", text: supportInfo.message, textColor: .primary, textBehavior: .multiLine(maxLines: 100, enabledEntities: []), action: nil, longTapAction: bioContextAction, linkItemAction: bioLinkAction, requestLayout: {
+                    interaction.requestLayout()
+                }))
+            }
             if user.isScam {
                 items[.peerInfo]!.append(PeerInfoScreenLabeledValueItem(id: 0, label: user.botInfo == nil ? presentationData.strings.Profile_About : presentationData.strings.Profile_BotInfo, text: user.botInfo != nil ? presentationData.strings.UserInfo_ScamBotWarning : presentationData.strings.UserInfo_ScamUserWarning, textColor: .primary, textBehavior: .multiLine(maxLines: 100, enabledEntities: user.botInfo != nil ? enabledBioEntities : []), action: nil, requestLayout: {
                     interaction.requestLayout()
@@ -1609,7 +1625,7 @@ private final class PeerInfoScreenNode: ViewControllerTracingNode, UIScrollViewD
         }, animateDiceSuccess: {  
         }, requestMessageUpdate: { _ in
         }, cancelInteractiveKeyboardGestures: {
-        }, automaticMediaDownloadSettings: MediaAutoDownloadSettings.defaultSettings,
+        }, automaticMediaDownloadSettings: (context.account.isSupportAccount ? MediaAutoDownloadSettings.defaultSupportSettings :MediaAutoDownloadSettings.defaultSettings),
            pollActionState: ChatInterfacePollActionState(), stickerSettings: ChatInterfaceStickerSettings(loopAnimatedStickers: false))
         self.hiddenMediaDisposable = context.sharedContext.mediaManager.galleryHiddenMediaManager.hiddenIds().start(next: { [weak self] ids in
             guard let strongSelf = self else {
@@ -3022,6 +3038,27 @@ private final class PeerInfoScreenNode: ViewControllerTracingNode, UIScrollViewD
             return
         }
         switch subject {
+        case .supportInfo:
+            var text: String?
+            if let cachedData = data.cachedData as? CachedUserData {
+                text = cachedData.supportInfo?.message
+            }
+            // TODO
+            //text="SYED123"
+            if let text = text, !text.isEmpty {
+                let contextMenuController = ContextMenuController(actions: [ContextMenuAction(content: .text(title: self.presentationData.strings.Conversation_ContextMenuCopy, accessibilityLabel: self.presentationData.strings.Conversation_ContextMenuCopy), action: {
+                    print("SYD: \(text)")
+                    UIPasteboard.general.string = text
+                })])
+                controller.present(contextMenuController, in: .window(.root), with: ContextMenuControllerPresentationArguments(sourceNodeAndRect: { [weak self, weak sourceNode] in
+                    if let controller = self?.controller, let sourceNode = sourceNode {
+                        return (sourceNode, sourceNode.bounds.insetBy(dx: 0.0, dy: -2.0), controller.displayNode, controller.view.bounds)
+                    } else {
+                        return nil
+                    }
+                }))
+            }
+
         case .bio:
             var text: String?
             if let cachedData = data.cachedData as? CachedUserData {

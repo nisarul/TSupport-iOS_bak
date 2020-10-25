@@ -292,7 +292,7 @@ public final class LocationPickerController: ViewController {
         self.displayNode = LocationPickerControllerNode(context: self.context, presentationData: self.presentationData, mode: self.mode, interaction: interaction)
         self.displayNodeDidLoad()
         
-        self.permissionDisposable = (DeviceAccess.authorizationStatus(subject: .location(.send))
+        self.permissionDisposable = (DeviceAccess.authorizationStatus(subject: .location(.send), isSupportAccount: context.account.isSupportAccount)
         |> deliverOnMainQueue).start(next: { [weak self] next in
             guard let strongSelf = self else {
                 return

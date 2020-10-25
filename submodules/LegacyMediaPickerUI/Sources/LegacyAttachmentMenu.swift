@@ -324,12 +324,13 @@ public func legacyAttachmentMenu(context: AccountContext, peer: Peer, editMediaO
             })!
             itemViews.append(pollItem)
         }
-    
-        let contactItem = TGMenuSheetButtonItemView(title: presentationData.strings.Conversation_Contact, type: TGMenuSheetButtonTypeDefault, fontSize: fontSize, action: { [weak controller] in
-            controller?.dismiss(animated: true)
-            openContacts()
-        })!
-        itemViews.append(contactItem)
+        if !context.account.isSupportAccount {
+            let contactItem = TGMenuSheetButtonItemView(title: presentationData.strings.Conversation_Contact, type: TGMenuSheetButtonTypeDefault, fontSize: fontSize, action: { [weak controller] in
+                controller?.dismiss(animated: true)
+                openContacts()
+            })!
+            itemViews.append(contactItem)
+        }
     }
     
     carouselItemView?.underlyingViews = underlyingViews
@@ -348,6 +349,23 @@ public func legacyAttachmentMenu(context: AccountContext, peer: Peer, editMediaO
                 itemViews.append(botItem)
             }
         }
+    }
+    
+    /** TSupport: Add @tl_bot as template bot to manage templates **/
+    if context.account.isSupportAccount {
+        let botItem = TGMenuSheetButtonItemView(title: "Template", type: TGMenuSheetButtonTypeDefault, fontSize: fontSize, action: { [weak controller] in
+            controller?.dismiss(animated: true)
+            let support_bot_peerid = PeerId(852373116)
+            context.account.postbox.transaction({ transaction -> Void in
+                if let support_bot_peer = transaction.getPeer(support_bot_peerid)  {
+                    Queue.mainQueue().async {
+                        selectRecentlyUsedInlineBot(support_bot_peer)
+                    }
+                }
+                }).start()
+        })!
+        botItem.overflow = true
+        itemViews.append(botItem)
     }
     
     carouselItemView?.remainingHeight = TGMenuSheetButtonItemViewHeight * CGFloat(itemViews.count - 1)

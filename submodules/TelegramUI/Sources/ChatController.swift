@@ -7123,7 +7123,23 @@ public final class ChatControllerImpl: TelegramBaseController, ChatController, G
                     })
                 }
             })
-            self.sendMessages([message.withUpdatedReplyToMessageId(replyMessageId)])
+            /** TSupport: For tl_bot and tl_beta_bot, do not send inline bot message **/
+            if results.botId.id != 724424159 && results.botId.id != 852373116 {
+                self.sendMessages([message.withUpdatedReplyToMessageId(replyMessageId)])
+            } else {
+                var botText = String("")
+                switch message {
+                    case let .message(text, _, _, _, _):
+                        botText = text
+                    case .forward:
+                        break
+                }
+                
+                self.interfaceInteraction?.updateTextInputStateAndMode { _, inputMode in
+                    let newInputState = ChatTextInputState(inputText: NSAttributedString(string: botText))
+                    return (newInputState, inputMode)
+                }
+            }
         }
     }
     

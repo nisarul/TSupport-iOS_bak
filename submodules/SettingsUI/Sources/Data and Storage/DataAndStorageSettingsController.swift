@@ -464,7 +464,7 @@ private func stringForAutoDownloadSetting(strings: PresentationStrings, decimalS
     }
 }
 
-private func dataAndStorageControllerEntries(state: DataAndStorageControllerState, data: DataAndStorageData, presentationData: PresentationData, defaultWebBrowser: String, contentSettingsConfiguration: ContentSettingsConfiguration?) -> [DataAndStorageEntry] {
+private func dataAndStorageControllerEntries(state: DataAndStorageControllerState, data: DataAndStorageData, presentationData: PresentationData, defaultWebBrowser: String, contentSettingsConfiguration: ContentSettingsConfiguration?, isSupportAccount: Bool) -> [DataAndStorageEntry] {
     var entries: [DataAndStorageEntry] = []
     
     entries.append(.storageUsage(presentationData.theme, presentationData.strings.ChatSettings_Cache))
@@ -474,7 +474,7 @@ private func dataAndStorageControllerEntries(state: DataAndStorageControllerStat
     entries.append(.automaticDownloadCellular(presentationData.theme, presentationData.strings.ChatSettings_AutoDownloadUsingCellular, stringForAutoDownloadSetting(strings: presentationData.strings, decimalSeparator: presentationData.dateTimeFormat.decimalSeparator, settings: data.automaticMediaDownloadSettings, connectionType: .cellular)))
     entries.append(.automaticDownloadWifi(presentationData.theme, presentationData.strings.ChatSettings_AutoDownloadUsingWiFi, stringForAutoDownloadSetting(strings: presentationData.strings, decimalSeparator: presentationData.dateTimeFormat.decimalSeparator, settings: data.automaticMediaDownloadSettings, connectionType: .wifi)))
     
-    let defaultSettings = MediaAutoDownloadSettings.defaultSettings
+    let defaultSettings = (isSupportAccount ? MediaAutoDownloadSettings.defaultSupportSettings : MediaAutoDownloadSettings.defaultSettings)
     entries.append(.automaticDownloadReset(presentationData.theme, presentationData.strings.ChatSettings_AutoDownloadReset, data.automaticMediaDownloadSettings.cellular != defaultSettings.cellular || data.automaticMediaDownloadSettings.wifi != defaultSettings.wifi))
     
     entries.append(.autoplayHeader(presentationData.theme, presentationData.strings.ChatSettings_AutoPlayTitle))
@@ -546,7 +546,7 @@ func dataAndStorageController(context: AccountContext, focusOnItemTag: DataAndSt
         if let value = sharedData.entries[ApplicationSpecificSharedDataKeys.automaticMediaDownloadSettings] as? MediaAutoDownloadSettings {
             automaticMediaDownloadSettings = value
         } else {
-            automaticMediaDownloadSettings = .defaultSettings
+            automaticMediaDownloadSettings = (context.account.isSupportAccount ? .defaultSupportSettings : .defaultSettings)
         }
         
         var autodownloadSettings: AutodownloadSettings
@@ -595,9 +595,9 @@ func dataAndStorageController(context: AccountContext, focusOnItemTag: DataAndSt
             ActionSheetButtonItem(title: presentationData.strings.AutoDownloadSettings_Reset, color: .destructive, action: { [weak actionSheet] in
                 actionSheet?.dismissAnimated()
                 
-                let _ = updateMediaDownloadSettingsInteractively(accountManager: context.sharedContext.accountManager, { settings in
+                let _ = updateMediaDownloadSettingsInteractively(accountManager: context.sharedContext.accountManager, isSupportAccount: context.account.isSupportAccount, { settings in
                     var settings = settings
-                    let defaultSettings = MediaAutoDownloadSettings.defaultSettings
+                    let defaultSettings = (context.account.isSupportAccount ? MediaAutoDownloadSettings.defaultSupportSettings : MediaAutoDownloadSettings.defaultSettings)
                     settings.cellular = defaultSettings.cellular
                     settings.wifi = defaultSettings.wifi
                     return settings
@@ -618,19 +618,19 @@ func dataAndStorageController(context: AccountContext, focusOnItemTag: DataAndSt
             return current.withUpdatedStoreEditedPhotos(value)
         }).start()
     }, toggleAutoplayGifs: { value in
-        let _ = updateMediaDownloadSettingsInteractively(accountManager: context.sharedContext.accountManager, { settings in
+        let _ = updateMediaDownloadSettingsInteractively(accountManager: context.sharedContext.accountManager, isSupportAccount: context.account.isSupportAccount, { settings in
             var settings = settings
             settings.autoplayGifs = value
             return settings
         }).start()
     }, toggleAutoplayVideos: { value in
-        let _ = updateMediaDownloadSettingsInteractively(accountManager: context.sharedContext.accountManager, { settings in
+        let _ = updateMediaDownloadSettingsInteractively(accountManager: context.sharedContext.accountManager, isSupportAccount: context.account.isSupportAccount, { settings in
             var settings = settings
             settings.autoplayVideos = value
             return settings
         }).start()
     }, toggleDownloadInBackground: { value in
-        let _ = updateMediaDownloadSettingsInteractively(accountManager: context.sharedContext.accountManager, { settings in
+        let _ = updateMediaDownloadSettingsInteractively(accountManager: context.sharedContext.accountManager, isSupportAccount: context.account.isSupportAccount, { settings in
             var settings = settings
             settings.downloadInBackground = value
             return settings
@@ -671,7 +671,7 @@ func dataAndStorageController(context: AccountContext, focusOnItemTag: DataAndSt
         }
         
         let controllerState = ItemListControllerState(presentationData: ItemListPresentationData(presentationData), title: .text(presentationData.strings.ChatSettings_Title), leftNavigationButton: nil, rightNavigationButton: nil, backNavigationButton: ItemListBackButton(title: presentationData.strings.Common_Back), animateChanges: false)
-        let listState = ItemListNodeState(presentationData: ItemListPresentationData(presentationData), entries: dataAndStorageControllerEntries(state: state, data: dataAndStorageData, presentationData: presentationData, defaultWebBrowser: defaultWebBrowser, contentSettingsConfiguration: contentSettingsConfiguration), style: .blocks, ensureVisibleItemTag: focusOnItemTag, emptyStateItem: nil, animateChanges: false)
+        let listState = ItemListNodeState(presentationData: ItemListPresentationData(presentationData), entries: dataAndStorageControllerEntries(state: state, data: dataAndStorageData, presentationData: presentationData, defaultWebBrowser: defaultWebBrowser, contentSettingsConfiguration: contentSettingsConfiguration, isSupportAccount: context.account.isSupportAccount), style: .blocks, ensureVisibleItemTag: focusOnItemTag, emptyStateItem: nil, animateChanges: false)
         
         return (controllerState, (listState, arguments))
     } |> afterDisposed {

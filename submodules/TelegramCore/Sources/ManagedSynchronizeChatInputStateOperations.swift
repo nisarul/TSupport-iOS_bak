@@ -74,7 +74,7 @@ private func withTakenOperation(postbox: Postbox, peerId: PeerId, tag: PeerOpera
     } |> switchToLatest
 }
 
-func managedSynchronizeChatInputStateOperations(postbox: Postbox, network: Network) -> Signal<Bool, NoError> {
+func managedSynchronizeChatInputStateOperations(postbox: Postbox, network: Network, isSupportAccount: Bool) -> Signal<Bool, NoError> {
     return Signal { subscriber in
         let hasRunningOperations = ValuePromise<Bool>(false, ignoreRepeated: true)
         let tag: PeerOperationLogTag = OperationLogTags.SynchronizeChatInputStates
@@ -94,7 +94,7 @@ func managedSynchronizeChatInputStateOperations(postbox: Postbox, network: Netwo
                 let signal = withTakenOperation(postbox: postbox, peerId: entry.peerId, tag: tag, tagLocalIndex: entry.tagLocalIndex, { transaction, entry -> Signal<Void, NoError> in
                     if let entry = entry {
                         if let operation = entry.contents as? SynchronizeChatInputStateOperation {
-                            return synchronizeChatInputState(transaction: transaction, postbox: postbox, network: network, peerId: entry.peerId, operation: operation)
+                            return synchronizeChatInputState(transaction: transaction, postbox: postbox, network: network, peerId: entry.peerId, operation: operation, isSupportAccount: isSupportAccount)
                         } else {
                             assertionFailure()
                         }
@@ -126,7 +126,7 @@ func managedSynchronizeChatInputStateOperations(postbox: Postbox, network: Netwo
     }
 }
 
-private func synchronizeChatInputState(transaction: Transaction, postbox: Postbox, network: Network, peerId: PeerId, operation: SynchronizeChatInputStateOperation) -> Signal<Void, NoError> {
+private func synchronizeChatInputState(transaction: Transaction, postbox: Postbox, network: Network, peerId: PeerId, operation: SynchronizeChatInputStateOperation, isSupportAccount: Bool) -> Signal<Void, NoError> {
     let inputState = (transaction.getPeerChatInterfaceState(peerId) as? SynchronizeableChatInterfaceState)?.synchronizeableInputState
     if let peer = transaction.getPeer(peerId), let inputPeer = apiInputPeer(peer) {
         var flags: Int32 = 0
@@ -137,6 +137,11 @@ private func synchronizeChatInputState(transaction: Transaction, postbox: Postbo
             if !inputState.entities.isEmpty {
                 flags |= (1 << 3)
             }
+        }
+        print("SYD: Draft synchronizeChatInputState: \(inputState?.text ?? "Nothing")")
+        /** TSupport: Do not sync drafts to server */
+        if (isSupportAccount) {
+            return .complete()
         }
         return network.request(Api.functions.messages.saveDraft(flags: flags, replyToMsgId: inputState?.replyToMessageId?.id, peer: inputPeer, message: inputState?.text ?? "", entities: apiEntitiesFromMessageTextEntities(inputState?.entities ?? [], associatedPeers: SimpleDictionary())))
             |> delay(2.0, queue: Queue.concurrentDefaultQueue())

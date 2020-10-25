@@ -10,6 +10,7 @@ public func clearCloudDraftsInteractively(postbox: Postbox, network: Network, ac
     |> retryRequest
     |> mapToSignal { updates -> Signal<Void, NoError> in
         return postbox.transaction { transaction -> Signal<Void, NoError> in
+            /** TSupport: Diable reading cloud drafts for support account **/
             var peerIds = Set<PeerId>()
             switch updates {
                 case let .updates(updates, users, chats, _, _):

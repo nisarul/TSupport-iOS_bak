@@ -2214,7 +2214,7 @@ final class SharedApplicationContext {
         let timestamp = CFAbsoluteTimeGetCurrent()
         if self.lastCheckForUpdatesTimestamp == nil || self.lastCheckForUpdatesTimestamp! < timestamp - 10.0 * 60.0 {
             self.lastCheckForUpdatesTimestamp = timestamp
-            
+            print("SYD: AppCenter ID: \(appCenterId)")
             if let url = URL(string: "https://api.appcenter.ms/v0.1/public/sdk/apps/\(appCenterId)/releases/latest") {
                 self.currentCheckForUpdatesDisposable.set((downloadHTTPData(url: url)
                 |> deliverOnMainQueue).start(next: { [weak self] data in

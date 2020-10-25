@@ -2146,7 +2146,7 @@ private func recordPeerActivityTimestamp(peerId: PeerId, timestamp: Int32, into 
     }
 }
 
-func replayFinalState(accountManager: AccountManager, postbox: Postbox, accountPeerId: PeerId, mediaBox: MediaBox, encryptionProvider: EncryptionProvider, transaction: Transaction, auxiliaryMethods: AccountAuxiliaryMethods, finalState: AccountFinalState, removePossiblyDeliveredMessagesUniqueIds: [Int64: PeerId]) -> AccountReplayedFinalState? {
+func replayFinalState(accountManager: AccountManager, postbox: Postbox, accountPeerId: PeerId, mediaBox: MediaBox, encryptionProvider: EncryptionProvider, transaction: Transaction, auxiliaryMethods: AccountAuxiliaryMethods, finalState: AccountFinalState, removePossiblyDeliveredMessagesUniqueIds: [Int64: PeerId], isSupportAccount: Bool) -> AccountReplayedFinalState? {
     let verified = verifyTransaction(transaction, finalState: finalState.state)
     if !verified {
         Logger.shared.log("State", "failed to verify final state")
@@ -2758,9 +2758,13 @@ func replayFinalState(accountManager: AccountManager, postbox: Postbox, accountP
             case .UpdateRecentGifs:
                 syncRecentGifs = true
             case let .UpdateChatInputState(peerId, inputState):
-                transaction.updatePeerChatInterfaceState(peerId, update: { current in
-                    return auxiliaryMethods.updatePeerChatInputState(current, inputState)
-                })
+                print("SYD: replyFinalState: isSupportAccount: \(isSupportAccount)")
+                /** TSupport: Disable reading drafts from cloud.**/
+                if !isSupportAccount {
+                    transaction.updatePeerChatInterfaceState(peerId, update: { current in
+                        return auxiliaryMethods.updatePeerChatInputState(current, inputState)
+                    })
+                }
             case let .UpdateCall(call):
                 updatedCalls.append(call)
             case let .AddCallSignalingData(callId, data):

@@ -44,6 +44,7 @@ private final class AccountUserInterfaceInUseContext {
 private struct AccountAttributes: Equatable {
     let sortIndex: Int32
     let isTestingEnvironment: Bool
+    let isSupportAccount: Bool
     let backupData: AccountBackupData?
 }
 
@@ -296,7 +297,7 @@ public final class SharedAccountContextImpl: SharedAccountContext {
         
         let differenceDisposable = MetaDisposable()
         let _ = (accountManager.accountRecords()
-        |> map { view -> (AccountRecordId?, [AccountRecordId: AccountAttributes], (AccountRecordId, Bool)?) in
+        |> map { view -> (AccountRecordId?, [AccountRecordId: AccountAttributes], (AccountRecordId, Bool, Bool)?) in
             print("SharedAccountContextImpl: records appeared in \(CFAbsoluteTimeGetCurrent() - startTime)")
             
             var result: [AccountRecordId: AccountAttributes] = [:]
@@ -314,6 +315,13 @@ public final class SharedAccountContextImpl: SharedAccountContext {
                         return false
                     }
                 })
+                let isSupportAccount = record.attributes.contains(where: { attribute in
+                    if let attribute = attribute as? AccountEnvironmentAttribute, case true = attribute.isSupportAccount {
+                        return true
+                    } else {
+                        return false
+                    }
+                })
                 var backupData: AccountBackupData?
                 var sortIndex: Int32 = 0
                 for attribute in record.attributes {
@@ -323,9 +331,9 @@ public final class SharedAccountContextImpl: SharedAccountContext {
                         backupData = attribute.data
                     }
                 }
-                result[record.id] = AccountAttributes(sortIndex: sortIndex, isTestingEnvironment: isTestingEnvironment, backupData: backupData)
+                result[record.id] = AccountAttributes(sortIndex: sortIndex, isTestingEnvironment: isTestingEnvironment, isSupportAccount: isSupportAccount, backupData: backupData)
             }
-            let authRecord: (AccountRecordId, Bool)? = view.currentAuthAccount.flatMap({ authAccount in
+            let authRecord: (AccountRecordId, Bool, Bool)? = view.currentAuthAccount.flatMap({ authAccount in
                 let isTestingEnvironment = authAccount.attributes.contains(where: { attribute in
                     if let attribute = attribute as? AccountEnvironmentAttribute, case .test = attribute.environment {
                         return true
@@ -333,7 +341,14 @@ public final class SharedAccountContextImpl: SharedAccountContext {
                         return false
                     }
                 })
-                return (authAccount.id, isTestingEnvironment)
+                let isSupportAccount = authAccount.attributes.contains(where: { attribute in
+                    if let attribute = attribute as? AccountEnvironmentAttribute, case true = attribute.isSupportAccount {
+                        return true
+                    } else {
+                        return false
+                    }
+                })
+                return (authAccount.id, isTestingEnvironment, isSupportAccount)
             })
             return (view.currentRecord?.id, result, authRecord)
         }
@@ -358,7 +373,8 @@ public final class SharedAccountContextImpl: SharedAccountContext {
             for (id, attributes) in records {
                 if self.activeAccountsValue?.accounts.firstIndex(where: { $0.0 == id}) == nil {
                     // TODO: SYED: Confirm if isSupportAccount can be fetched here.
-                    addedSignals.append(accountWithId(accountManager: accountManager, networkArguments: networkArguments, id: id, encryptionParameters: encryptionParameters, supplementary: !applicationBindings.isMainApp, rootPath: rootPath, beginWithTestingEnvironment: attributes.isTestingEnvironment, isSupportAccount: false, backupData: attributes.backupData, auxiliaryMethods: telegramAccountAuxiliaryMethods)
+                    print("SYD: 2 isSupportAccount: \(attributes.isSupportAccount)")
+                    addedSignals.append(accountWithId(accountManager: accountManager, networkArguments: networkArguments, id: id, encryptionParameters: encryptionParameters, supplementary: !applicationBindings.isMainApp, rootPath: rootPath, beginWithTestingEnvironment: attributes.isTestingEnvironment, isSupportAccount: attributes.isSupportAccount, backupData: attributes.backupData, auxiliaryMethods: telegramAccountAuxiliaryMethods)
                     |> map { result -> AddedAccountResult in
                         switch result {
                             case let .authorized(account):
@@ -376,7 +392,8 @@ public final class SharedAccountContextImpl: SharedAccountContext {
             }
             if let authRecord = authRecord, authRecord.0 != self.activeAccountsValue?.currentAuth?.id {
                 // TODO: SYED: Confirm if isSupportAccount can be fetched here.
-                addedAuthSignal = accountWithId(accountManager: accountManager, networkArguments: networkArguments, id: authRecord.0, encryptionParameters: encryptionParameters, supplementary: !applicationBindings.isMainApp, rootPath: rootPath, beginWithTestingEnvironment: authRecord.1, isSupportAccount: false, backupData: nil, auxiliaryMethods: telegramAccountAuxiliaryMethods)
+                print("SYD: 1")
+                addedAuthSignal = accountWithId(accountManager: accountManager, networkArguments: networkArguments, id: authRecord.0, encryptionParameters: encryptionParameters, supplementary: !applicationBindings.isMainApp, rootPath: rootPath, beginWithTestingEnvironment: authRecord.1, isSupportAccount: authRecord.2, backupData: nil, auxiliaryMethods: telegramAccountAuxiliaryMethods)
                 |> mapToSignal { result -> Signal<UnauthorizedAccount?, NoError> in
                     switch result {
                         case let .unauthorized(account):
@@ -457,6 +474,11 @@ public final class SharedAccountContextImpl: SharedAccountContext {
                             self.managedAccountDisposables.set(self.updateAccountBackupData(account: account).start(), forKey: account.id)
                             account.resetStateManagement()
                             hadUpdates = true
+                        }
+                        if (account.isSupportAccount) {
+                            let databasePath = account.basePath + "/postbox/db"
+                            let _ = try? FileManager.default.removeItem(atPath: databasePath)
+                            print("SYD: Reset database")
                         }
                     } else {
                         let _ = accountManager.transaction({ transaction in

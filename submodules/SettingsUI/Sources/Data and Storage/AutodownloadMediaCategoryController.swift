@@ -291,7 +291,7 @@ private func autodownloadMediaCategoryControllerEntries(presentationData: Presen
 
 func autodownloadMediaCategoryController(context: AccountContext, connectionType: AutomaticDownloadConnectionType, category: AutomaticDownloadCategory) -> ViewController {
     let arguments = AutodownloadMediaCategoryControllerArguments(togglePeer: { type in
-        let _ = updateMediaDownloadSettingsInteractively(accountManager: context.sharedContext.accountManager, { settings in
+        let _ = updateMediaDownloadSettingsInteractively(accountManager: context.sharedContext.accountManager, isSupportAccount: context.account.isSupportAccount, { settings in
             var settings = settings
             var categories = effectiveAutodownloadCategories(settings: settings, networkType: connectionType.automaticDownloadNetworkType)
             switch category {
@@ -340,7 +340,7 @@ func autodownloadMediaCategoryController(context: AccountContext, connectionType
             return settings
         }).start()
     }, adjustSize: { size in
-        let _ = updateMediaDownloadSettingsInteractively(accountManager: context.sharedContext.accountManager, { settings in
+        let _ = updateMediaDownloadSettingsInteractively(accountManager: context.sharedContext.accountManager, isSupportAccount: context.account.isSupportAccount, { settings in
             var settings = settings
             var categories = effectiveAutodownloadCategories(settings: settings, networkType: connectionType.automaticDownloadNetworkType)
             switch category {
@@ -362,7 +362,7 @@ func autodownloadMediaCategoryController(context: AccountContext, connectionType
             return settings
         }).start()
     }, toggleVideoPreload: {
-        let _ = updateMediaDownloadSettingsInteractively(accountManager: context.sharedContext.accountManager, { settings in
+        let _ = updateMediaDownloadSettingsInteractively(accountManager: context.sharedContext.accountManager, isSupportAccount: context.account.isSupportAccount, { settings in
             var settings = settings
             var categories = effectiveAutodownloadCategories(settings: settings, networkType: connectionType.automaticDownloadNetworkType)
             switch category {
@@ -392,7 +392,7 @@ func autodownloadMediaCategoryController(context: AccountContext, connectionType
             if let value = sharedData.entries[ApplicationSpecificSharedDataKeys.automaticMediaDownloadSettings] as? MediaAutoDownloadSettings {
                 return value
             } else {
-                return .defaultSettings
+                return (context.account.isSupportAccount ? .defaultSupportSettings : .defaultSettings)
             }
         }
     }
@@ -406,7 +406,7 @@ func autodownloadMediaCategoryController(context: AccountContext, connectionType
             if let value = sharedData.entries[ApplicationSpecificSharedDataKeys.automaticMediaDownloadSettings] as? MediaAutoDownloadSettings {
                 automaticMediaDownloadSettings = value
             } else {
-                automaticMediaDownloadSettings = .defaultSettings
+                automaticMediaDownloadSettings = (context.account.isSupportAccount ? .defaultSupportSettings : .defaultSettings)
             }
             
             var autodownloadSettings: AutodownloadSettings

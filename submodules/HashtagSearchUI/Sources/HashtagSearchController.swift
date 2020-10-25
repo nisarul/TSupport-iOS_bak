@@ -80,10 +80,12 @@ public final class HashtagSearchController: TelegramBaseController {
         self.transitionDisposable = (foundMessages
         |> deliverOnMainQueue).start(next: { [weak self] entries in
             if let strongSelf = self {
+                //print("SYD: Entries \(entries[0])")
+                
                 let previousEntries = previousSearchItems.swap(entries)
                 
                 let firstTime = previousEntries == nil
-                let transition = chatListSearchContainerPreparedTransition(from: previousEntries ?? [], to: entries, displayingResults: true, context: strongSelf.context, presentationData: strongSelf.presentationData, enableHeaders: false, filter: [], interaction: interaction, peerContextAction: nil, toggleExpandLocalResults: {
+                let transition = chatListSearchContainerPreparedTransition(from: previousEntries ?? [], to: entries, displayingResults: true, context: strongSelf.context, presentationData: strongSelf.presentationData, enableHeaders: true, filter: [ChatListNodePeersFilter.doNotSearchMessages], interaction: interaction, peerContextAction: nil, toggleExpandLocalResults: {
                 }, toggleExpandGlobalResults: {
                 })
                 strongSelf.controllerNode.enqueueTransition(transition, firstTime: firstTime)

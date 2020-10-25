@@ -81,7 +81,7 @@ public final class DeviceAccess {
         return AVAudioSession.sharedInstance().recordPermission == .granted
     }
     
-    public static func authorizationStatus(applicationInForeground: Signal<Bool, NoError>? = nil, siriAuthorization: (() -> AccessType)? = nil, subject: DeviceAccessSubject) -> Signal<AccessType, NoError> {
+    public static func authorizationStatus(applicationInForeground: Signal<Bool, NoError>? = nil, siriAuthorization: (() -> AccessType)? = nil, subject: DeviceAccessSubject, isSupportAccount: Bool) -> Signal<AccessType, NoError> {
         switch subject {
             case .notifications:
                 let status = (Signal<AccessType, NoError> { subscriber in
@@ -134,6 +134,13 @@ public final class DeviceAccess {
                     return status
                 }
             case .contacts:
+                /** TSupport: Disabling contacts permission **/
+                if (isSupportAccount) {
+                    return Signal { subscriber in
+                        subscriber.putNext(.denied)
+                        return EmptyDisposable
+                    }
+                }
                 let status = Signal<AccessType, NoError> { subscriber in
                     if #available(iOSApplicationExtension 9.0, iOS 9.0, *) {
                         switch CNContactStore.authorizationStatus(for: .contacts) {
@@ -215,6 +222,13 @@ public final class DeviceAccess {
                     return .single(.denied)
                 }
             case .location:
+                /** TSupport: Disabling location permission **/
+                if (isSupportAccount) {
+                    return Signal { subscriber in
+                        subscriber.putNext(.denied)
+                        return EmptyDisposable
+                    }
+                }
                 return Signal { subscriber in
                     let status = CLLocationManager.authorizationStatus()
                     switch status {
@@ -244,7 +258,7 @@ public final class DeviceAccess {
         }
     }
     
-    public static func authorizeAccess(to subject: DeviceAccessSubject, registerForNotifications: ((@escaping (Bool) -> Void) -> Void)? = nil, requestSiriAuthorization: ((@escaping (Bool) -> Void) -> Void)? = nil, locationManager: LocationManager? = nil, presentationData: PresentationData? = nil, present: @escaping (ViewController, Any?) -> Void = { _, _ in }, openSettings: @escaping () -> Void = { }, displayNotificationFromBackground: @escaping (String) -> Void = { _ in }, _ completion: @escaping (Bool) -> Void = { _ in }) {
+    public static func authorizeAccess(to subject: DeviceAccessSubject, registerForNotifications: ((@escaping (Bool) -> Void) -> Void)? = nil, requestSiriAuthorization: ((@escaping (Bool) -> Void) -> Void)? = nil, locationManager: LocationManager? = nil, presentationData: PresentationData? = nil, present: @escaping (ViewController, Any?) -> Void = { _, _ in }, openSettings: @escaping () -> Void = { }, displayNotificationFromBackground: @escaping (String) -> Void = { _ in }, isSupportAccount: Bool = false, _ completion: @escaping (Bool) -> Void = { _ in }) {
             switch subject {
                 case .camera:
                     let status = PGCamera.cameraAuthorizationStatus()
@@ -346,105 +360,116 @@ public final class DeviceAccess {
                         })
                     }
                 case let .location(locationSubject):
-                    let status = CLLocationManager.authorizationStatus()
-                    switch status {
-                        case .authorizedAlways:
-                            completion(true)
-                        case .authorizedWhenInUse:
-                            switch locationSubject {
-                                case .send, .tracking:
-                                    completion(true)
-                                case .live:
-                                    completion(false)
-                                    if let presentationData = presentationData {
-                                        let text = presentationData.strings.AccessDenied_LocationAlwaysDenied
-                                        present(standardTextAlertController(theme: AlertControllerTheme(presentationData: presentationData), title: presentationData.strings.AccessDenied_Title, text: text, actions: [TextAlertAction(type: .defaultAction, title: presentationData.strings.Common_NotNow, action: {}), TextAlertAction(type: .genericAction, title: presentationData.strings.AccessDenied_Settings, action: {
-                                            openSettings()
-                                        })]), nil)
-                                    }
-                            }
-                        case .denied, .restricted:
-                            completion(false)
-                            if let presentationData = presentationData {
-                                let text: String
-                                if status == .denied {
-                                    switch locationSubject {
-                                        case .send, .live:
-                                            text = presentationData.strings.AccessDenied_LocationDenied
-                                        case .tracking:
-                                            text = presentationData.strings.AccessDenied_LocationTracking
-                                    }
-                                } else {
-                                    text = presentationData.strings.AccessDenied_LocationDisabled
-                                }
-                                present(standardTextAlertController(theme: AlertControllerTheme(presentationData: presentationData), title: presentationData.strings.AccessDenied_Title, text: text, actions: [TextAlertAction(type: .defaultAction, title: presentationData.strings.Common_NotNow, action: {}), TextAlertAction(type: .genericAction, title: presentationData.strings.AccessDenied_Settings, action: {
-                                    openSettings()
-                                })]), nil)
-                            }
-                        case .notDetermined:
-                            switch locationSubject {
-                                case .send, .tracking:
-                                    locationManager?.requestWhenInUseAuthorization(completion: { status in
-                                        completion(status == .authorizedWhenInUse || status == .authorizedAlways)
-                                    })
-                                case .live:
-                                    locationManager?.requestAlwaysAuthorization(completion: { status in
-                                        completion(status == .authorizedAlways)
-                                    })
-                                default:
-                                    break
-                            }
-                        @unknown default:
-                            fatalError()
-                }
-                case .contacts:
-                    let _ = (self.contactsPromise.get()
-                    |> take(1)
-                    |> deliverOnMainQueue).start(next: { value in
-                        if let value = value {
-                            completion(value)
-                        } else {
-                            if #available(iOSApplicationExtension 9.0, iOS 9.0, *) {
-                                switch CNContactStore.authorizationStatus(for: .contacts) {
-                                    case .notDetermined:
-                                        let store = CNContactStore()
-                                        store.requestAccess(for: .contacts, completionHandler: { authorized, _ in
-                                            self.contactsPromise.set(.single(authorized))
-                                            completion(authorized)
-                                        })
-                                    case .authorized:
-                                        self.contactsPromise.set(.single(true))
+                    /** TSupport: Disabling location  permission **/
+                    if (isSupportAccount) {
+                        completion(false)
+                    } else {
+                        let status = CLLocationManager.authorizationStatus()
+                        switch status {
+                            case .authorizedAlways:
+                                completion(true)
+                            case .authorizedWhenInUse:
+                                switch locationSubject {
+                                    case .send, .tracking:
                                         completion(true)
-                                    default:
-                                        self.contactsPromise.set(.single(false))
+                                    case .live:
                                         completion(false)
+                                        if let presentationData = presentationData {
+                                            let text = presentationData.strings.AccessDenied_LocationAlwaysDenied
+                                            present(standardTextAlertController(theme: AlertControllerTheme(presentationData: presentationData), title: presentationData.strings.AccessDenied_Title, text: text, actions: [TextAlertAction(type: .defaultAction, title: presentationData.strings.Common_NotNow, action: {}), TextAlertAction(type: .genericAction, title: presentationData.strings.AccessDenied_Settings, action: {
+                                                openSettings()
+                                            })]), nil)
+                                        }
                                 }
+                            case .denied, .restricted:
+                                completion(false)
+                                if let presentationData = presentationData {
+                                    let text: String
+                                    if status == .denied {
+                                        switch locationSubject {
+                                            case .send, .live:
+                                                text = presentationData.strings.AccessDenied_LocationDenied
+                                            case .tracking:
+                                                text = presentationData.strings.AccessDenied_LocationTracking
+                                        }
+                                    } else {
+                                        text = presentationData.strings.AccessDenied_LocationDisabled
+                                    }
+                                    present(standardTextAlertController(theme: AlertControllerTheme(presentationData: presentationData), title: presentationData.strings.AccessDenied_Title, text: text, actions: [TextAlertAction(type: .defaultAction, title: presentationData.strings.Common_NotNow, action: {}), TextAlertAction(type: .genericAction, title: presentationData.strings.AccessDenied_Settings, action: {
+                                        openSettings()
+                                    })]), nil)
+                                }
+                            case .notDetermined:
+                                switch locationSubject {
+                                    case .send, .tracking:
+                                        locationManager?.requestWhenInUseAuthorization(completion: { status in
+                                            completion(status == .authorizedWhenInUse || status == .authorizedAlways)
+                                        })
+                                    case .live:
+                                        locationManager?.requestAlwaysAuthorization(completion: { status in
+                                            completion(status == .authorizedAlways)
+                                        })
+                                    default:
+                                        break
+                                }
+                            @unknown default:
+                                fatalError()
+                        }
+                    }
+                case .contacts:
+                    /** TSupport: Disabling contacts permission **/
+                    if (isSupportAccount) {
+                        self.contactsPromise.set(.single(false))
+                        completion(false)
+                    } else {
+                        let _ = (self.contactsPromise.get()
+                        |> take(1)
+                        |> deliverOnMainQueue).start(next: { value in
+                            if let value = value {
+                                completion(value)
                             } else {
-                                switch ABAddressBookGetAuthorizationStatus() {
-                                    case .notDetermined:
-                                        var error: Unmanaged<CFError>?
-                                        let addressBook = ABAddressBookCreateWithOptions(nil, &error)
-                                        if let addressBook = addressBook?.takeUnretainedValue() {
-                                            ABAddressBookRequestAccessWithCompletion(addressBook, { authorized, _ in
-                                                Queue.mainQueue().async {
-                                                    self.contactsPromise.set(.single(authorized))
-                                                    completion(authorized)
-                                                }
+                                if #available(iOSApplicationExtension 9.0, iOS 9.0, *) {
+                                    switch CNContactStore.authorizationStatus(for: .contacts) {
+                                        case .notDetermined:
+                                            let store = CNContactStore()
+                                            store.requestAccess(for: .contacts, completionHandler: { authorized, _ in
+                                                self.contactsPromise.set(.single(authorized))
+                                                completion(authorized)
                                             })
-                                        } else {
+                                        case .authorized:
+                                            self.contactsPromise.set(.single(true))
+                                            completion(true)
+                                        default:
                                             self.contactsPromise.set(.single(false))
                                             completion(false)
-                                        }
-                                    case .authorized:
-                                        self.contactsPromise.set(.single(true))
-                                        completion(true)
-                                    default:
-                                        self.contactsPromise.set(.single(false))
-                                        completion(false)
+                                    }
+                                } else {
+                                    switch ABAddressBookGetAuthorizationStatus() {
+                                        case .notDetermined:
+                                            var error: Unmanaged<CFError>?
+                                            let addressBook = ABAddressBookCreateWithOptions(nil, &error)
+                                            if let addressBook = addressBook?.takeUnretainedValue() {
+                                                ABAddressBookRequestAccessWithCompletion(addressBook, { authorized, _ in
+                                                    Queue.mainQueue().async {
+                                                        self.contactsPromise.set(.single(authorized))
+                                                        completion(authorized)
+                                                    }
+                                                })
+                                            } else {
+                                                self.contactsPromise.set(.single(false))
+                                                completion(false)
+                                            }
+                                        case .authorized:
+                                            self.contactsPromise.set(.single(true))
+                                            completion(true)
+                                        default:
+                                            self.contactsPromise.set(.single(false))
+                                            completion(false)
+                                    }
                                 }
                             }
-                        }
-                    })
+                        })
+                    }
                 case .notifications:
                     if let registerForNotifications = registerForNotifications {
                         registerForNotifications { result in

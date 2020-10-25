@@ -283,7 +283,7 @@ private struct EditSettingsState: Equatable {
     }
 }
 
-private func editSettingsEntries(presentationData: PresentationData, state: EditSettingsState, view: PeerView, canAddAccounts: Bool) -> [SettingsEntry] {
+private func editSettingsEntries(presentationData: PresentationData, state: EditSettingsState, view: PeerView, canAddAccounts: Bool, isSupportAccount: Bool) -> [SettingsEntry] {
     var entries: [SettingsEntry] = []
     
     if let peer = peerViewMainPeer(view) as? TelegramUser {
@@ -291,14 +291,16 @@ private func editSettingsEntries(presentationData: PresentationData, state: Edit
         entries.append(.userInfo(presentationData.theme, presentationData.strings, presentationData.dateTimeFormat, peer, view.cachedData, userInfoState, state.updatingAvatar))
         entries.append(.userInfoNotice(presentationData.theme, presentationData.strings.EditProfile_NameAndPhotoHelp))
         
-        entries.append(.bioText(presentationData.theme, state.editingBioText, presentationData.strings.UserInfo_About_Placeholder))
-        entries.append(.bioInfo(presentationData.theme, presentationData.strings.Settings_About_Help))
-        
-        if let phone = peer.phone {
-            entries.append(.phoneNumber(presentationData.theme, presentationData.strings.Settings_PhoneNumber, formatPhoneNumber(phone)))
+        /** TSupport: Disabling Bio, Change number and Change username settings for support account. **/
+        if !isSupportAccount {
+            entries.append(.bioText(presentationData.theme, state.editingBioText, presentationData.strings.UserInfo_About_Placeholder))
+            entries.append(.bioInfo(presentationData.theme, presentationData.strings.Settings_About_Help))
+            
+            if let phone = peer.phone {
+                entries.append(.phoneNumber(presentationData.theme, presentationData.strings.Settings_PhoneNumber, formatPhoneNumber(phone)))
+            }
+            entries.append(.username(presentationData.theme, presentationData.strings.Settings_Username, peer.addressName == nil ? "" : ("@" + peer.addressName!)))
         }
-        entries.append(.username(presentationData.theme, presentationData.strings.Settings_Username, peer.addressName == nil ? "" : ("@" + peer.addressName!)))
-        
         if canAddAccounts {
             entries.append(.addAccount(presentationData.theme, presentationData.strings.Settings_AddAccount))
         }
@@ -345,6 +347,10 @@ func editSettingsController(context: AccountContext, currentName: ItemListAvatar
     var getNavigationController: (() -> NavigationController?)?
     
     let arguments = EditSettingsItemArguments(context: context, accountManager: accountManager, avatarAndNameInfoContext: avatarAndNameInfoContext, avatarTapAction: {
+        if context.account.isSupportAccount {
+            /** TSupport: Disabling editing profile picture **/
+            return
+        }
         var updating = false
         updateState {
             updating = $0.updatingAvatar != nil
@@ -439,7 +445,7 @@ func editSettingsController(context: AccountContext, currentName: ItemListAvatar
         }
         
         let controllerState = ItemListControllerState(presentationData: ItemListPresentationData(presentationData), title: .text(presentationData.strings.EditProfile_Title), leftNavigationButton: nil, rightNavigationButton: rightNavigationButton, backNavigationButton: ItemListBackButton(title: presentationData.strings.Common_Back))
-        let listState = ItemListNodeState(presentationData: ItemListPresentationData(presentationData), entries: editSettingsEntries(presentationData: presentationData, state: state, view: view, canAddAccounts: canAddAccounts), style: .blocks, ensureVisibleItemTag: focusOnItemTag)
+        let listState = ItemListNodeState(presentationData: ItemListPresentationData(presentationData), entries: editSettingsEntries(presentationData: presentationData, state: state, view: view, canAddAccounts: canAddAccounts, isSupportAccount: context.account.isSupportAccount), style: .blocks, ensureVisibleItemTag: focusOnItemTag)
         
         return (controllerState, (listState, arguments))
     } |> afterDisposed {

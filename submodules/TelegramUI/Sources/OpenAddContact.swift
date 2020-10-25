@@ -10,7 +10,7 @@ import PresentationDataUtils
 import PeerInfoUI
 
 func openAddContactImpl(context: AccountContext, firstName: String = "", lastName: String = "", phoneNumber: String, label: String = "_$!<Mobile>!$_", present: @escaping (ViewController, Any?) -> Void, pushController: @escaping (ViewController) -> Void, completed: @escaping () -> Void = {}) {
-    let _ = (DeviceAccess.authorizationStatus(subject: .contacts)
+    let _ = (DeviceAccess.authorizationStatus(subject: .contacts, isSupportAccount: context.account.isSupportAccount)
     |> take(1)
     |> deliverOnMainQueue).start(next: { value in
         switch value {

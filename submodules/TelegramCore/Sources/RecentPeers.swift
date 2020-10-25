@@ -221,6 +221,7 @@ public func recentlyUsedInlineBots(postbox: Postbox) -> Signal<[(Peer, Double)],
                 if let view = view.views[.orderedItemList(id: Namespaces.OrderedItemList.CloudRecentInlineBots)] as? OrderedItemListView {
                     for item in view.items {
                         let peerId = RecentPeerItemId(item.id).peerId
+                        print("SYD: PeerId: \(peerId)")
                         if let peer = transaction.getPeer(peerId), let contents = item.contents as? RecentPeerItem {
                             peers.append((peer, contents.rating))
                         }

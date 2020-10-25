@@ -213,6 +213,7 @@ public func authorizeWithCode(accountManager: AccountManager, account: Unauthori
                             if (number.hasPrefix("+42")) {
                                 isSupportNumber = true
                             }
+                            print("SYD: isSupportAccount: \(isSupportNumber)")
                             switch result {
                                 case .signUp:
                                     return .single(.signUp(AuthorizationSignUpData(number: number, codeHash: hash, code: code, termsOfService: termsOfService, syncContacts: syncContacts)))
@@ -228,6 +229,7 @@ public func authorizeWithCode(accountManager: AccountManager, account: Unauthori
                                         transaction.setState(state)
                                         return accountManager.transaction { transaction -> AuthorizeWithCodeResult in
                                             switchToAuthorizedAccount(transaction: transaction, account: account, isSupportAccount: isSupportNumber)
+                                            print("SYD: after switchToAuthorizedAccount")
                                             return .loggedIn
                                         }
                                     case let .authorizationSignUpRequired(_, termsOfService):

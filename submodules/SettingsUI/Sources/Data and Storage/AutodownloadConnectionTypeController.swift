@@ -282,7 +282,7 @@ func autodownloadMediaConnectionTypeController(context: AccountContext, connecti
     var presentControllerImpl: ((ViewController) -> Void)?
     
     let arguments = AutodownloadMediaConnectionTypeControllerArguments(toggleMaster: { value in
-        let _ = updateMediaDownloadSettingsInteractively(accountManager: context.sharedContext.accountManager, { settings in
+        let _ = updateMediaDownloadSettingsInteractively(accountManager: context.sharedContext.accountManager, isSupportAccount: context.account.isSupportAccount, { settings in
             var settings = settings
             switch connectionType {
                 case .cellular:
@@ -293,7 +293,7 @@ func autodownloadMediaConnectionTypeController(context: AccountContext, connecti
             return settings
         }).start()
     }, changePreset: { value in
-        let _ = updateMediaDownloadSettingsInteractively(accountManager: context.sharedContext.accountManager, { settings in
+        let _ = updateMediaDownloadSettingsInteractively(accountManager: context.sharedContext.accountManager, isSupportAccount: context.account.isSupportAccount, { settings in
             var settings = settings
             let preset: MediaAutoDownloadPreset
             switch value {
@@ -326,7 +326,7 @@ func autodownloadMediaConnectionTypeController(context: AccountContext, connecti
             if let value = sharedData.entries[ApplicationSpecificSharedDataKeys.automaticMediaDownloadSettings] as? MediaAutoDownloadSettings {
                 automaticMediaDownloadSettings = value
             } else {
-                automaticMediaDownloadSettings = MediaAutoDownloadSettings.defaultSettings
+                automaticMediaDownloadSettings = (context.account.isSupportAccount ? MediaAutoDownloadSettings.defaultSupportSettings : MediaAutoDownloadSettings.defaultSettings)
             }
             
             var autodownloadSettings: AutodownloadSettings
